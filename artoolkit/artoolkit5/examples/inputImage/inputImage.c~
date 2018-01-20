@@ -21,7 +21,7 @@
 #include <ARUtil/time.h>
 #include <iostream>
 #include <fstream>
-#include <reader/RawLogReader.h>
+#include </../include/reader/RawLogReader.h>
 using namespace std; 
 
 
@@ -61,7 +61,7 @@ static int setupParams()
   int		   xsize=640, ysize=480;
   AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
   const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/python_calib3.dat";
-	//const char* camPar = "Data/cameraSetting-%08x%08x.dat";
+
   if ((arParamClear(cparam, xsize, ysize, AR_DIST_FUNCTION_VERSION_DEFAULT))<0){
     ARLOGi("new param not happening");
     return(false);

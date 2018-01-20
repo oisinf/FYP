@@ -21,7 +21,7 @@
 #include <ARUtil/time.h>
 #include <iostream>
 #include <fstream>
-#include <reader/RawLogReader.h>
+#include <../include/reader/RawLogReader.h>
 using namespace std; 
 
 
