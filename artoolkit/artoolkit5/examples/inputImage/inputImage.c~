@@ -220,7 +220,7 @@ int main(void)
   cout<< gARHandle->markerInfo<<"\n";
   cout<< gARHandle->pattHandle<<"\n";
 
-  std::string logfile = "/home/oisin/libs/ElasticFusion/GUI/build/Kanji.klg";
+  std::string logfile = "/home/oisin/libs/ElasticFusion/GUI/build/kanji.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
