@@ -25,7 +25,7 @@
 using namespace cv;
 using namespace std;
 VideoWriter video;
-
+ofstream myfile;
 MainController::MainController(int argc, char * argv[])
   : good(true),
     eFusion(0),
@@ -190,9 +190,17 @@ MainController::MainController(int argc, char * argv[])
 	 {
 	   // video.open("calib.avi",CV_FOURCC('X','V','I','D'),20, Size(640, 480));
 
-	     run();
+	   //Write current pose to text file 
+	   std::ostringstream oss;
+	   oss << "/home/oisin/libs/TestLogs/EFFrames&Poses/Test1.txt";
+	   std::string path = oss.str();
+	   myfile.open (path);
 
-	     // video.release();
+	   run();
+	   
+	   myfile.close();
+		 
+	   // video.release();
 
 	 }
 
@@ -357,17 +365,12 @@ MainController::MainController(int argc, char * argv[])
 	     gui->resLog.Log((std::isnan(eFusion->getModelToModel().lastICPError) ? std::numeric_limits<float>::max() : eFusion->getModelToModel().lastICPError), icpErrThresh);
 	     gui->inLog.Log(eFusion->getModelToModel().lastICPCount, icpCountThresh);
 	 }
-	 ///get current pose print out and get frame 
-	 Eigen::Matrix4f pose = eFusion->getCurrPose();
+	  Eigen::Matrix4f pose = eFusion->getCurrPose();
 	 
-	 //Write current pose to text file
-         ofstream myfile; 
-	 std::ostringstream oss;
-	 oss << "/home/oisin/libs/TestLogs/Frames/"<<logReader->currentFrame<<".txt";
-	 std::string path = oss.str();
-	 myfile.open (path);
-	 myfile << eFusion->getCurrPose() << "\n";
-	 myfile.close();
+	 ///get current pose print out and get frame 
+
+	  myfile << "Frame "<<logReader->currentFrame<<"\n";
+	 myfile << eFusion->getCurrPose() << "\n \n";
 
 	 /*
 	 cv::Mat frame = cv::Mat(Size(640, 480), CV_8UC3,(logReader->rgb)); 
