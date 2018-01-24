@@ -4,9 +4,7 @@
 #  define snprintf _snprintf
 #  define _USE_MATH_DEFINES
 #endif
-#include <stdlib.h>	
-#include <stdio.h>
-#include <string.h>				// malloc(), free()
+#include <stdlib.h>					// malloc(), free()
 #include <math.h>
 #ifdef __APPLE__
 #  include <GLUT/glut.h>
@@ -22,7 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <../include/reader/RawLogReader.h>
-using namespace std; 
+//using namespace std; 
 
 
 //test git upload
@@ -58,9 +56,9 @@ static float gDrawRotateAngle = 0;			// For use in drawing.
 
 static int setupParams()
 {
-  int		   xsize=640, ysize=480;
+  int		  xsize=640, ysize=480;
   AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
-  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/python_calib3.dat";
+  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/calib2.dat";
 
   if ((arParamClear(cparam, xsize, ysize, AR_DIST_FUNCTION_VERSION_DEFAULT))<0){
     ARLOGi("new param not happening");
@@ -110,7 +108,7 @@ static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, 
     arPattDeleteHandle(*pattHandle_p);
     return (FALSE);
   }
-  cout<patt_id;
+  //cout<patt_id;
   arPattAttach(arhandle, *pattHandle_p);
   ARLOGi("setupMarker \n");
   
@@ -140,7 +138,6 @@ int detectImage(AR2VideoBufferT *image)
   int j, k;
   
   gCallCountMarkerDetect++;
-
   if (arDetectMarker(gARHandle, image) < 0) {
     ARLOGi("No marker");
     exit(0);
@@ -148,9 +145,9 @@ int detectImage(AR2VideoBufferT *image)
   markerInfo = arGetMarker(gARHandle);
   k = -1;
   for (j = 0; j < gARHandle->marker_num; j++) {
-    cout<<"\n"<<gPatt_id<<" patt id \n";
-    cout<<gARHandle->markerInfo[j].id<<" info id \n";
-    cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
+    std::cout<<"\n"<<gPatt_id<<" patt id \n";
+    std::cout<<gARHandle->markerInfo[j].id<<" info id \n";
+    std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
     
     if (markerInfo[j].id == gPatt_id) {
       if (k == -1) {k = j; /*First marker detected. */
@@ -163,7 +160,7 @@ int detectImage(AR2VideoBufferT *image)
   if (k != -1) {
     // Get the transformation between the marker and the real camera into gPatt_trans.
     err = arGetTransMatSquare(gAR3DHandle, &(gARHandle->markerInfo[k]), gPatt_width, gPatt_trans);
-        ARLOGi("TEstt");
+        ARLOGi("marker detected");
 
     //printf("%s %f", " ", gARHandle->markerInfo[k].cf);
     //unsure what err is. 
@@ -179,6 +176,7 @@ int detectImage(AR2VideoBufferT *image)
       }
       fprintf(fp, "\n");}
     fclose(fp);
+    
     gPatt_found = TRUE;
   } else {
     gPatt_found = FALSE;
@@ -188,14 +186,13 @@ int detectImage(AR2VideoBufferT *image)
 int main(void)
 {
   ARLOGi("main");
-  //char    patt_name[]  = "Data/hiro.patt";
-  char    patt_name[]  = "Data/kanji.patt";
+  char    patt_name[]  = "Data/hiro.patt";
+  //char    patt_name[]  = "Data/kanji3.patt";
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
 
-  arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
-  
-  
+  //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
+  //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
   setupParams();
   
@@ -207,20 +204,20 @@ int main(void)
     cleanup();
     exit(-1);
   }
-  cout<<"start \n";
-  cout<< gARHandle->arDebug<<"\n";
-  cout<< gARHandle->arPixelFormat<<"\n";
-  cout<< gARHandle->arPixelSize<<"\n";
-  cout<< gARHandle->arLabelingMode<<"\n";
-  cout<< gARHandle->arLabelingThresh<<"\n";
-  cout<< gARHandle->arImageProcMode<<"\n";
-  cout<< gARHandle->arPatternDetectionMode<<"\n";
-  cout<< gARHandle->arMarkerExtractionMode<<"\n";
-  cout<< gARHandle->marker_num<<"\n";
-  cout<< gARHandle->markerInfo<<"\n";
-  cout<< gARHandle->pattHandle<<"\n";
+  std::cout<<"start \n";
+  std::cout<< gARHandle->arDebug<<"\n";
+  std::cout<< gARHandle->arPixelFormat<<"\n";
+  std::cout<< gARHandle->arPixelSize<<"\n";
+  std::cout<< gARHandle->arLabelingMode<<"\n";
+  std::cout<< gARHandle->arLabelingThresh<<"\n";
+  std::cout<< gARHandle->arImageProcMode<<"\n";
+  std::cout<< gARHandle->arPatternDetectionMode<<"\n";
+  std::cout<< gARHandle->arMarkerExtractionMode<<"\n";
+  std::cout<< gARHandle->marker_num<<"\n";
+  std::cout<< gARHandle->markerInfo<<"\n";
+  std::cout<< gARHandle->pattHandle<<"\n";
 
-  std::string logfile = "/home/oisin/libs/ElasticFusion/GUI/build/kanji.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
