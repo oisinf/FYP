@@ -34,7 +34,7 @@ static ARHandle		*gARHandle = new ARHandle();
 static ARPattHandle	*gARPattHandle = NULL;
 static long		 gCallCountMarkerDetect = 0;
 
- ARParam*		 cparam = new ARParam();
+ARParam*		 cparam = new ARParam();
 
 
 // Transformation matrix retrieval.
@@ -65,16 +65,38 @@ static int setupParams()
     return(false);
   }
   
-  if ((arParamLoad(camPar, 1, cparam))<0){
-     ARLOGi("param load not happenening");
+  if(arParamLoad(camPar, 1, cparam)==0){
+     ARLOGw("param load not happenening");
     return(false);
   }
-  
-  
-  if ((gCparamLT = arParamLTCreate(cparam, AR_PARAM_LT_DEFAULT_OFFSET)) == NULL) {
-    ARLOGe("setupCamera(): Error: arParamLTCreate.\n");
-    return (FALSE);
+  else
+    {
+      arParamClearWithFOVy(cparam, xsize, ysize, M_PI_4);
+      ARLOGw("using default camera parameters");
+    }
+
+  /*
+  if (arParamLoad(camPar, 1, cparam) < 0) {
+    ARLOGe("setupCamera(): Error loading parameter file %s for camera.\n", cparam);
+    return (false);
   }
+   else
+      {
+	arParamClearWithFOVy(cparam, xsize, ysize, M_PI_4); // M_PI_4 radians = 45 degrees.
+	ARLOGw("Using default camera parameters for %dx%d image size, 45 degrees vertical field-of-view.\n", xsize, ysize);
+      }
+  */
+if (cparam->xsize != xsize || cparam->ysize != ysize) {
+  ARLOGw("*** Camera Parameter resized from %d, %d. ***\n", cparam->xsize, cparam->ysize);
+  arParamChangeSize(cparam, xsize, ysize, cparam);
+ }
+
+if ((gCparamLT = arParamLTCreate(cparam, AR_PARAM_LT_DEFAULT_OFFSET)) == NULL) {
+  ARLOGe("setupCamera(): Error: arParamLTCreate.\n");
+  return (FALSE);
+ }
+
+  
   
   if( (gARHandle=arCreateHandle(gCparamLT)) == NULL ) {
     ARLOGe("Error: arCreateHandle.\n");

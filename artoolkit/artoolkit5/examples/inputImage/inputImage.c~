@@ -56,7 +56,7 @@ static float gDrawRotateAngle = 0;			// For use in drawing.
 
 static int setupParams()
 {
-  int		   xsize=640, ysize=480;
+  int		  xsize=640, ysize=480;
   AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
   const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/calib2.dat";
 
@@ -138,7 +138,6 @@ int detectImage(AR2VideoBufferT *image)
   int j, k;
   
   gCallCountMarkerDetect++;
-
   if (arDetectMarker(gARHandle, image) < 0) {
     ARLOGi("No marker");
     exit(0);
@@ -161,7 +160,7 @@ int detectImage(AR2VideoBufferT *image)
   if (k != -1) {
     // Get the transformation between the marker and the real camera into gPatt_trans.
     err = arGetTransMatSquare(gAR3DHandle, &(gARHandle->markerInfo[k]), gPatt_width, gPatt_trans);
-        ARLOGi("TEstt");
+        ARLOGi("marker detected");
 
     //printf("%s %f", " ", gARHandle->markerInfo[k].cf);
     //unsure what err is. 
@@ -188,13 +187,12 @@ int main(void)
 {
   ARLOGi("main");
   char    patt_name[]  = "Data/hiro.patt";
-  //char    patt_name[]  = "Data/kanji.patt";
+  //char    patt_name[]  = "Data/kanji3.patt";
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
 
-  arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
-  
-  
+  //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
+  //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
   setupParams();
   
@@ -222,7 +220,6 @@ int main(void)
   std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
-  std::cout<<logfile;
   logreader = new RawLogReader(logfile);
   
   while (logreader->grabNext())
