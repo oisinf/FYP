@@ -98,7 +98,7 @@ static int setupParams()
 }
 
 //set up maker r func
-static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
+static int setupMarker(std::string *patterns , int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
 {	
 
   //**********use arPattCreateHandle2
@@ -107,7 +107,10 @@ static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, 
     ARLOGe("setupMarker(): Error: arPattCreateHandle.\n");
     return (FALSE);
   }
-  
+
+  for (int i = 0;  i < patterns->size(); i++)
+    {
+      patt_name = patterns[i];
   // Loading only 1 pattern in this example.
   //Pass in array of patt names, iterate for each patt name
   if ((*patt_id = arPattLoad(*pattHandle_p, patt_name)) < 0) {
@@ -119,7 +122,7 @@ static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, 
   arPattAttach(arhandle, *pattHandle_p);
   ARLOGi("setupMarker \n");
   
-  
+    }
   return (TRUE);
 }
 //Clean up
@@ -205,10 +208,10 @@ int detectImage(AR2VideoBufferT *image, int currentFrame)
 
 int main(void)
 {
-  char    patt_name[]  = "Data/hiro.patt";
+  //char    patt_name[]  = "Data/hiro.patt";
   //char    patt_name[]  = "Data/kanji.patt";
   
-  //char patterns []  = {"Data/hiro.patt", "Data/kanji.patt"};
+  std::string patterns [] = {"Data/hiro.patt", "Data/kanji.patt"};
   
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
@@ -219,7 +222,7 @@ int main(void)
   setupParams();
   ///Load two markers 
   // Load marker(s).
-  if (!setupMarker(patt_name, &gPatt_id, gARHandle, &gARPattHandle)) {
+  if (!setupMarker(patterns, &gPatt_id, gARHandle, &gARPattHandle)) {
     ARLOGe("main(): Unable to set up AR marker.\n");
     cleanup();
     exit(-1);
