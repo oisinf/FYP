@@ -20,6 +20,8 @@
 #include <iostream>
 #include <fstream>
 #include <../include/reader/RawLogReader.h>
+
+#include <opencv/cv.h>
 //using namespace std; 
 
 // Marker detection.
@@ -49,7 +51,7 @@ static int setupParams()
   //Pixel format
   AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
   //File path for camera parameters
-  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/calib2.dat";
+  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/camera_para.dat";
 
   //Clear AR param so can load new values into it
   if ((arParamClear(cparam, xsize, ysize, AR_DIST_FUNCTION_VERSION_DEFAULT))<0){
@@ -143,7 +145,7 @@ int detectImage(AR2VideoBufferT *image)
     ARLOGi("No marker");
     exit(-1);
   }
-  
+
   markerInfo = arGetMarker(gARHandle);
   
   k = -1;
@@ -151,6 +153,7 @@ int detectImage(AR2VideoBufferT *image)
   for (j = 0; j < gARHandle->marker_num; j++) {
     
     std::cout<<"\n"<<gPatt_id<<" patt id \n";
+    std::cout<<gARHandle->marker_num<<"\n";
     std::cout<<gARHandle->markerInfo[j].id<<" info id \n";
     std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
     
@@ -222,19 +225,26 @@ int main(void)
   std::cout<< gARHandle->markerInfo<<"\n";
   std::cout<< gARHandle->pattHandle<<"\n";
 
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest5.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
-  
+  image->buff = new ARUint8[640*480];
   while (logreader->grabNext())
     {
             
       im = logreader->decompressedImage;
+
+      cv::Mat cvimage(480, 640, CV_8UC3, im);
+      cv::Mat gimage;
+      cv::cvtColor(cvimage, gimage, CV_BGR2GRAY);
+      cv::imshow("Test", gimage);
+      cv::waitKey(0);
+      
       image->buff = im ;
       image->bufPlanes = NULL;
       image->bufPlaneCount= 0; 
-      image->buffLuma = image->buff; 
+      image->buffLuma = gimage.data;
       image->fillFlag = 1; 
     
       detectImage(image);
