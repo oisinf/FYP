@@ -44,6 +44,8 @@ static int     		gPatt_id;				// Per-marker, but we are using only 1 marker.
 static ARParamLT *gCparamLT = NULL;
 static ARGL_CONTEXT_SETTINGS_REF gArglSettings = NULL;
 
+FILE * fp; 
+
 static int setupParams()
 {
   //Pixel size
@@ -96,25 +98,31 @@ static int setupParams()
 }
 
 //set up maker r func
-static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
+static int setupMarker(std::string *patterns , int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
 {	
+
+  //**********use arPattCreateHandle2
   
   if ((*pattHandle_p = arPattCreateHandle()) == NULL) {
     ARLOGe("setupMarker(): Error: arPattCreateHandle.\n");
     return (FALSE);
   }
-  
+
+  for (int i = 0;  i < patterns->size(); i++)
+    {
+      patt_name = patterns[i];
   // Loading only 1 pattern in this example.
+  //Pass in array of patt names, iterate for each patt name
   if ((*patt_id = arPattLoad(*pattHandle_p, patt_name)) < 0) {
     ARLOGe("setupMarker(): Error loading pattern file %s.\n", patt_name);
     arPattDeleteHandle(*pattHandle_p);
     return (FALSE);
   }
-  //cout<patt_id;
+  //std vector of arhandles, attach patt handle
   arPattAttach(arhandle, *pattHandle_p);
   ARLOGi("setupMarker \n");
   
-  
+    }
   return (TRUE);
 }
 //Clean up
@@ -133,7 +141,7 @@ static void cleanup(void)
 
 }
 
-int detectImage(AR2VideoBufferT *image)
+int detectImage(AR2VideoBufferT *image, int currentFrame)
 {
   ARdouble err;
   ARMarkerInfo   *markerInfo;
@@ -149,42 +157,48 @@ int detectImage(AR2VideoBufferT *image)
   markerInfo = arGetMarker(gARHandle);
   
   k = -1;
-  
+  //Increment through marker num on handle, multiple patterns attached with createPattHandle2
   for (j = 0; j < gARHandle->marker_num; j++) {
-    
+
+    /*
     std::cout<<"\n"<<gPatt_id<<" patt id \n";
     std::cout<<gARHandle->marker_num<<"\n";
     std::cout<<gARHandle->markerInfo[j].id<<" info id \n";
     std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
+    */
     
     if (markerInfo[j].id == gPatt_id) {
       if (k == -1) {
 	if (markerInfo[j].cf >=0.7) k = j; /*First marker detected. */
-	ARLOGi("marker detected");
+	//ARLOGi("marker detected");
       }
+     
       else if (markerInfo[j].cf > markerInfo[k].cf) k = j; // Higher confidence marker detected.
     }
+    //need to add another else if statment, i.e if marker j and k both detected. Use a flag? 
   }
+
   
   if (k != -1) {
     // Get the transformation between the marker and the real camera into gPatt_trans.
     err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
-        ARLOGi("marker detected");
+    //ARLOGi("marker detected");
 
     //printf("%s %f", " ", gARHandle->markerInfo[k].cf);
     //unsure what err is. 
     printf ("%s %f"," ",  err);
-    int i ,j; 
-    
-    FILE * fp; 
-    
-    fp=fopen("/home/oisin/libs/TestLogs/gPatt_trans.txt", "w");
+
+    fprintf(fp, "%s %i %s", "Frame ",currentFrame, "\n");
+    int i ,j;  
     for (i=0; i<3; i++){
       for (j=0; j<4; j++){
 	fprintf(fp, "%f %s", gPatt_trans[i][j]," ");
       }
-      fprintf(fp, "\n");}
-    fclose(fp);
+      fprintf(fp, "\n");
+    }
+    // fprintf(fp, "%i %i %i %i %s", 0, 0, 0, 1, "\n"); //to make them homogneous, can do this elsewhere
+
+
     
     gPatt_found = TRUE;
   } else {
@@ -194,24 +208,27 @@ int detectImage(AR2VideoBufferT *image)
 
 int main(void)
 {
-  char    patt_name[]  = "Data/hiro.patt";
+  //char    patt_name[]  = "Data/hiro.patt";
   //char    patt_name[]  = "Data/kanji.patt";
+  
+  std::string patterns [] = {"Data/hiro.patt", "Data/kanji.patt"};
+  
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
-
+  int currentFrame; 
   //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
   //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
   setupParams();
-  
- 
   ///Load two markers 
   // Load marker(s).
-  if (!setupMarker(patt_name, &gPatt_id, gARHandle, &gARPattHandle)) {
+  if (!setupMarker(patterns, &gPatt_id, gARHandle, &gARPattHandle)) {
     ARLOGe("main(): Unable to set up AR marker.\n");
     cleanup();
     exit(-1);
   }
+
+  /*
   std::cout<<"start \n";
   std::cout<< gARHandle->arDebug<<"\n";
   std::cout<< gARHandle->arPixelFormat<<"\n";
@@ -224,32 +241,41 @@ int main(void)
   std::cout<< gARHandle->marker_num<<"\n";
   std::cout<< gARHandle->markerInfo<<"\n";
   std::cout<< gARHandle->pattHandle<<"\n";
-
+  */
   std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
+  
+  
+     
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test1.txt", "w");
+
+  
   while (logreader->grabNext())
     {
-            
       im = logreader->decompressedImage;
 
+      
       cv::Mat cvimage(480, 640, CV_8UC3, im);
       cv::Mat gimage;
       cv::cvtColor(cvimage, gimage, CV_BGR2GRAY);
+      /*
       cv::imshow("Test", gimage);
       cv::waitKey(0);
-      
+      */
       image->buff = im ;
       image->bufPlanes = NULL;
       image->bufPlaneCount= 0; 
       image->buffLuma = gimage.data;
       image->fillFlag = 1; 
-    
-      detectImage(image);
+      currentFrame = logreader->currentFrame;
+      detectImage(image, currentFrame);
     }
+
   
+  fclose(fp);
   ARLOGi("main end");
   return (0);
 }

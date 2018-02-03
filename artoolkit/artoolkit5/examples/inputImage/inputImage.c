@@ -37,7 +37,7 @@ static AR3DHandle	*gAR3DHandle = NULL;
 static ARdouble		gPatt_width     = 100.0;	// Per-marker, but we are using only 1 marker.
 static ARdouble		gPatt_trans[3][4];		// Per-marker, but we are using only 1 marker.
 static int	       	gPatt_found = FALSE;	// Per-marker, but we are using only 1 marker.
-static int     		gPatt_id;				// Per-marker, but we are using only 1 marker.
+static int []   	gPatt_id;				// Per-marker, but we are using only 1 marker.
 
 // Drawing.
 
@@ -98,31 +98,36 @@ static int setupParams()
 }
 
 //set up maker r func
-static int setupMarker(std::string *patterns , int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
+static int setupMarker(const char **patterns , int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
 {	
+  const int size = 16;
+  const int numMarkers = 2;
 
-  //**********use arPattCreateHandle2
+  //int arry for patt_id
   
-  if ((*pattHandle_p = arPattCreateHandle()) == NULL) {
+  if ((*pattHandle_p = arPattCreateHandle2(size, numMarkers)) == NULL) {
     ARLOGe("setupMarker(): Error: arPattCreateHandle.\n");
     return (FALSE);
   }
 
-  for (int i = 0;  i < patterns->size(); i++)
+  for (int i = 0;  i < 2 ; i++)
     {
-      patt_name = patterns[i];
-  // Loading only 1 pattern in this example.
-  //Pass in array of patt names, iterate for each patt name
-  if ((*patt_id = arPattLoad(*pattHandle_p, patt_name)) < 0) {
-    ARLOGe("setupMarker(): Error loading pattern file %s.\n", patt_name);
-    arPattDeleteHandle(*pattHandle_p);
-    return (FALSE);
-  }
+      std::cout<<patterns[i]<<"\n";
+
+      if ((*patt_id= arPattLoad(*pattHandle_p, patterns[i])) < 0) {
+	
+	ARLOGe("setupMarker(): Error loading pattern file %s.\n");
+	return (FALSE);
+      }
+      std::cout<<*patt_id<<"\n";
   //std vector of arhandles, attach patt handle
-  arPattAttach(arhandle, *pattHandle_p);
-  ARLOGi("setupMarker \n");
-  
+      arPattAttach(arhandle, *pattHandle_p);
+      ARLOGi("setupMarker \n");
+
+ 
     }
+
+  
   return (TRUE);
 }
 //Clean up
@@ -157,6 +162,9 @@ int detectImage(AR2VideoBufferT *image, int currentFrame)
   markerInfo = arGetMarker(gARHandle);
   
   k = -1;
+  //Need another for loop to loop through patt ids 
+
+  
   //Increment through marker num on handle, multiple patterns attached with createPattHandle2
   for (j = 0; j < gARHandle->marker_num; j++) {
 
@@ -167,7 +175,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame)
     std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
     */
     
-    if (markerInfo[j].id == gPatt_id) {
+    if (markerInfo[j].id == 0 ||markerInfo[j].id ==1) {
       if (k == -1) {
 	if (markerInfo[j].cf >=0.7) k = j; /*First marker detected. */
 	//ARLOGi("marker detected");
@@ -186,7 +194,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame)
 
     //printf("%s %f", " ", gARHandle->markerInfo[k].cf);
     //unsure what err is. 
-    printf ("%s %f"," ",  err);
+    //printf ("%s %f"," ",  err);
 
     fprintf(fp, "%s %i %s", "Frame ",currentFrame, "\n");
     int i ,j;  
@@ -211,7 +219,7 @@ int main(void)
   //char    patt_name[]  = "Data/hiro.patt";
   //char    patt_name[]  = "Data/kanji.patt";
   
-  std::string patterns [] = {"Data/hiro.patt", "Data/kanji.patt"};
+  const char* patterns [] = { "Data/kanji.patt", "Data/hiro.patt"};
   
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
@@ -229,6 +237,22 @@ int main(void)
   }
 
   /*
+  ARMarkerInfo *testMarkerInfo;
+  testMarkerInfo = arGetMarker(gARHandle);
+  std::cout<<gARHandle->marker_num;
+  std::cout<<gARHandle->markerInfo[0].id;
+  // std::cout<<testMarkerInfo[1].id;
+
+	
+
+  /*
+  for (int j=0; j< gARHandle->marker_num; j++)
+    {
+      ARLOGi("this is working?");
+      std::cout<<gARHandle->marker_num;
+      std::cout<<testMarkerInfo[j].id;
+    }
+  /*
   std::cout<<"start \n";
   std::cout<< gARHandle->arDebug<<"\n";
   std::cout<< gARHandle->arPixelFormat<<"\n";
@@ -242,14 +266,12 @@ int main(void)
   std::cout<< gARHandle->markerInfo<<"\n";
   std::cout<< gARHandle->pattHandle<<"\n";
   */
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiTest.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
   
-  
-     
   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test1.txt", "w");
 
   
