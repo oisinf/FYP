@@ -4,7 +4,7 @@
 #  define snprintf _snprintf
 #  define _USE_MATH_DEFINES
 #endif
-#include <stdlib.h>					// malloc(), free()
+#include <stdlib.h>					
 #include <math.h>
 #ifdef __APPLE__
 #  include <GLUT/glut.h>
@@ -34,12 +34,9 @@ ARParam*		 cparam = new ARParam();
 
 // Transformation matrix retrieval.
 static AR3DHandle	*gAR3DHandle = NULL;
-static ARdouble		gPatt_width     = 100.0;	// Per-marker, but we are using only 1 marker.
-static ARdouble		gPatt_trans[3][4];		// Per-marker, but we are using only 1 marker.
-static int	       	gPatt_found = FALSE;	// Per-marker, but we are using only 1 marker.
-static int 	        gPatt_id;				// Per-marker, but we are using only 1 marker.
-
-// Drawing.
+static ARdouble		gPatt_width     = 200.0;        
+static ARdouble		gPatt_trans[3][4];	        
+static int	       	gPatt_found = FALSE; 
 
 static ARParamLT *gCparamLT = NULL;
 static ARGL_CONTEXT_SETTINGS_REF gArglSettings = NULL;
@@ -97,7 +94,7 @@ static int setupParams()
   return (TRUE);
 }
 
-//set up maker r func
+//set up marker func
 static int setupMarker(const char **patterns, int *pattIDs , ARHandle *arhandle, ARPattHandle **pattHandle_p, const int numMarkers )
 {	
   const int size = 16;
@@ -157,42 +154,24 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
   }
   markerInfo = arGetMarker(gARHandle);
   
-  
-  //Need another for loop to loop through patt ids 
-
   for (i = 0; i<gARHandle->marker_num; i++)
     {
       k = -1;
       //Increment through marker num on handle, multiple patterns attached with createPattHandle2
-      for (j = 0; j < gARHandle->marker_num; j++) {
-	/*
-	  std::cout<<"\n"<<gPatt_id<<" patt id \n";
-	  std::cout<<gARHandle->marker_num<<"\n";
-	  std::cout<<gARHandle->markerInfo[j].id<<" info id \n";
-	  std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
-	*/	
+      for (j = 0; j < gARHandle->marker_num; j++) {	
 	if (markerInfo[j].id == pattIDs[i]) {
 	  if (k == -1) {
 	    if (markerInfo[j].cf >=0.7){
 	      k = j;
-	      std::cout<<"pattern id detected "<<markerInfo[j].id<<" in frame "<<currentFrame<<"\n";
+	      std::cout<<"pattern id "<<markerInfo[j].id<<" detected in frame "<<currentFrame<<"\n";
 
-	    }/*First marker detected. */
-	    //ARLOGi("marker detected");
+	    }/*First marker detected. */   
 	  }
-	  //might not need this if statment
-	  //else if (markerInfo[j].cf > markerInfo[k].cf) k = j; // Higher confidence marker detected.
 	}
-	//need to add another else if statment, i.e if marker j and k both detected. Use a flag? 
       }
       if (k != -1) {
 	// Get the transformation between the marker and the real camera into gPatt_trans.
 	err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
-	//ARLOGi("marker detected");
-	
-	//printf("%s %f", " ", gARHandle->markerInfo[k].cf);
-	//unsure what err is. 
-	//printf ("%s %f"," ",  err);
 	
 	fprintf(fp, "%s %i %s", "Frame ",currentFrame, "\n");
 	fprintf(fp, "%s %i %s", "Patt" , pattIDs[i], "\n");
@@ -203,11 +182,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 	  }
 	  fprintf(fp, "\n");
 	}
-	fprintf(fp, "\n");
-	// fprintf(fp, "%i %i %i %i %s", 0, 0, 0, 1, "\n"); //to make them homogneous, can do this elsewhere
-	
-	
-	
+	fprintf(fp, "\n");	
 	gPatt_found = TRUE;
       }
       else {
@@ -218,22 +193,20 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 
 int main(void)
 {
-  //char    patt_name[]  = "Data/hiro.patt";
-  //char    patt_name[]  = "Data/kanji.patt";
   
   const char* patterns [] = { "Data/kanji.patt", "Data/hiro.patt"};
+  
   const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
-  int pattIDs[numMarkers]; 
-  std::cout<<numMarkers;
+  int pattIDs[numMarkers];
+  
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
-  int currentFrame; 
+  int currentFrame;
+  
   //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
   //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
   setupParams();
-  ///Load two markers 
-  // Load marker(s).
   if (!setupMarker(patterns, pattIDs, gARHandle, &gARPattHandle, numMarkers)) {
     ARLOGe("main(): Unable to set up AR marker.\n");
     cleanup();
@@ -270,13 +243,13 @@ int main(void)
   std::cout<< gARHandle->markerInfo<<"\n";
   std::cout<< gARHandle->pattHandle<<"\n";
   */
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanji&hiro.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiHiro75cm.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
   
-  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test1.txt", "w");
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/hiroKanji75cm2.txt", "w");
 
   
   while (logreader->grabNext())
