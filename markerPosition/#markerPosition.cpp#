@@ -20,15 +20,14 @@ const char *pfEF = "../TestLogs/EFFrames&Poses/test1.txt";
 
 int parseARText(stringstream& posesStream)
 {
-   
-  string line, frame, patt;
-  size_t f1, f2; 
+  //strings to temporarily store values before conversion to ints/doubles
+  string line, frame, patt,row1, row2, row3;
+  
   const string frameLine = "Frame";
   const string pattLine = "Patt"; 
   
   int currentFrame, currentPatt;
   int lineIncr=0;
-  string row1, row2, row3; 
 
 
   cout<<posesStream;
@@ -38,16 +37,15 @@ int parseARText(stringstream& posesStream)
     //while (getline (posesAR, line)){
     getline(posesStream, line);
 
-    f1 = line.find(frameLine);
     f2 = line.find(pattLine);
     
-    if (f1!=string::npos){
+    if (line.find(frameLine)!=string::npos){
     frame = line.substr(5);
     istringstream (frame)>> currentFrame;
     //current frame, need to find corresponding frame in EF poses
     cout<<currentFrame<<"\n";
     }
-    if (f2!=string::npos){
+    if (line.f!=string::npos){
       patt = line.substr(4);
       istringstream(patt)>>currentPatt;
       
