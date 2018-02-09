@@ -146,7 +146,7 @@ int main ()
 	  efR3 = row3;
 	  efR4 = row4;
 	  
-	  createMatrix(arPatt);
+	  //createMatrix(arPatt);
 	  
 	}
       }
