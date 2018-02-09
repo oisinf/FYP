@@ -16,7 +16,7 @@ using namespace std;
 //Ensure path names correct as no validitation as of yet
 //AR poses and frames (pf)
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/Test1.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/Test2.txt";
 
 //ints to hold frame and patt nums
 int currentFrame, currentPatt;
@@ -28,7 +28,7 @@ string  frame, patt, row1, row2, row3, row4;
 //(stringstream& posesStream)
 int parseText(string line, bool frameFlag, int findFrame)
 {
-  // cout<<line<<"\n";
+  //cout<<line<<"\n";
 
     //Matrix filled
     if (line.empty()){
@@ -75,14 +75,18 @@ int parseText(string line, bool frameFlag, int findFrame)
 
 int main ()
 {
-  //return eigen matrix of two poses at that time, then transform
+  //Declare ifstreams to read in txt data
   ifstream posesAR;
   ifstream posesEF;
 
-  string line;
-  
+  //Declare strings to be parsed
+  string  line;
+  string lineEF     ; 
+
+  //open ifstreams
   posesAR.open(pfAR, ios::in);
   posesEF.open(pfEF, ios::in);
+
   
   if(!posesAR.is_open()) {
       cout<<"cannot open file"<<pfAR;
@@ -104,13 +108,15 @@ int main ()
   stringstream efPoseStream(efString);
   
   posesEF.close();
-  
-  int arFrame, arPatt, efFrame;
+
+  //Initialize int and string to hold info from parsing
+  int arFrame, arPatt, efFrame;     
   string arR1, arR2, arR3, efR1, efR2, efR3, efR4;
 
   while(!arPoseStream.eof()){
     getline(arPoseStream, line); 
 
+    //returns true if empty line
     if(parseText(line, true, -1)){
       //cout<<currentFrame<<"\n"<<currentPatt<<"\n"<<row1<<"\n"<<row2<<"\n"<<row3<<"\n \n";
       
@@ -119,29 +125,30 @@ int main ()
       arR1= row1;
       arR2= row2;
       arR3= row3;
-      cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
+      //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
       
       //get corresponding EF frame
       while(!efPoseStream.eof()){
 
-	cout<<"start of loop"<<currentFrame;
+	getline(efPoseStream, lineEF);
 	
-	getline(efPoseStream, line);
-	
-	if(parseText(line, false, currentFrame)){
+	if(parseText(lineEF, false, arFrame)){
 	  efFrame = currentFrame;
+	  if (efFrame == arFrame){
 	  efR1 = row1;
 	  efR2 = row2;
 	  efR3 = row3;
 	  efR4 = row4;
-	  
-	  //createMatrix(arPatt);
+		  
+	}
 	  
 	}
       }
+      cout<<"EF "<<efFrame<<"\n"<<efR1<<"\n"<<efR2<<"\n"<<efR3<<"\n"<<efR4<<"\n";
+
+      
     }
   }
-  cout<<"EF "<<efFrame<<"\n"<<efR1<<"\n"<<efR2<<"\n"<<efR3<<"\n"<<efR4<<"\n";
 
 }
 
