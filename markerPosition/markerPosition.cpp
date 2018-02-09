@@ -26,19 +26,27 @@ string  frame, patt, row1, row2, row3, row4;
 
 
 //(stringstream& posesStream)
-int parseText(string line)
+int parseText(string line, bool frameFlag, int findFrame)
 {
+  // cout<<line<<"\n";
+
     //Matrix filled
     if (line.empty()){
-      //cout<<lineIncr<<"\n";
        return true;  
     }
-    else if (line.find("Frame")!=string::npos){
+    else if (line.find("Frame")!=string::npos && frameFlag ==true){
     frame = line.substr(5);
-    istringstream ("frame")>> currentFrame;
+    istringstream (frame)>>currentFrame;
     //current frame, need to find corresponding frame in EF poses
-    //cout<<currentFrame<<"\n";
+    //cout<<"frame"<<currentFrame<<"\n";
+    //cout<<"AR "<<line<<"\n"; 
     }
+    else if (line.find("Frame "+findFrame)!=string::npos && frameFlag ==false){
+      frame = line.substr(5);
+      istringstream (frame )>>currentFrame;
+      //cout<<"EF "<<line<<"\n"; 
+
+      }
     else if (line.find("Patt")!=string::npos){
       patt = line.substr(4);
       istringstream(patt)>>currentPatt;
@@ -46,7 +54,7 @@ int parseText(string line)
     }
     else if(line.find("r0")!=string::npos){
       row1 = line.substr(2);
-      //cout<<row1<<"\n";
+      // cout<<row1<<"\n";
     }
     else if(line.find("r1")!=string::npos){
       row2 = line.substr(2);
@@ -54,10 +62,11 @@ int parseText(string line)
     }
     else if(line.find("r2")!=string::npos){
       row3 = line.substr(2);
-      // cout<<row3<<"\n";
+      //cout<<row3<<"\n";
     }
     else if(line.find("r3")!=string::npos){
       row4 = line.substr(2);
+      // cout<<row4<<"\n";
     }
   
     return false; 
@@ -100,10 +109,9 @@ int main ()
   string arR1, arR2, arR3, efR1, efR2, efR3, efR4;
 
   while(!arPoseStream.eof()){
-
     getline(arPoseStream, line); 
 
-    if(parseText(line)){
+    if(parseText(line, true, -1)){
       //cout<<currentFrame<<"\n"<<currentPatt<<"\n"<<row1<<"\n"<<row2<<"\n"<<row3<<"\n \n";
       
       arFrame=currentFrame;
@@ -115,10 +123,12 @@ int main ()
       
       //get corresponding EF frame
       while(!efPoseStream.eof()){
+
+	cout<<"start of loop"<<currentFrame;
 	
 	getline(efPoseStream, line);
 	
-	if(parseText(line)){
+	if(parseText(line, false, currentFrame)){
 	  efFrame = currentFrame;
 	  efR1 = row1;
 	  efR2 = row2;
