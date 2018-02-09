@@ -28,27 +28,6 @@ string  frame, patt, row1, row2, row3, row4;
 //(stringstream& posesStream)
 int parseText(string line)
 {
-  /*
-  switch(line){
-  case line.empty() :
-    return true;
-  case line.find("Frame")!=string::npos :
-    frame = line.substr(5);
-    istringstream(frame)>>currentFrame;
-  case line.find("Patt")!=string::npos :
-    patt = line.substr(4); 
-    istringstream(patt)>>currentPatt;
-  case line.find("r0")!=string::npos :
-    row1 = line.substr(2);
-  case line.find("r1")!=string::npos :
-    row2 = line.substr(2);
-  case line.find("r2")!=string::npos :
-    row3 = line.substr(2);
-  case line.find("r3")!=string::npos :
-    row4 = line.substr(2);
-  default : return false; 
-  */
-  
     //Matrix filled
     if (line.empty()){
       //cout<<lineIncr<<"\n";
