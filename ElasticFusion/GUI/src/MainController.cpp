@@ -368,9 +368,17 @@ MainController::MainController(int argc, char * argv[])
 	  Eigen::Matrix4f pose = eFusion->getCurrPose();
 	 
 	 ///get current pose print out and get frame 
-
+	  
 	  myfile << "Frame "<<logReader->currentFrame<<"\n";
-	 myfile << eFusion->getCurrPose() << "\n \n";
+	  for (int i=0; i<4;i++){
+	    myfile<<"r"<<i<<" ";
+	    for (int j=0;j<4;j++){
+	      myfile<<pose(i,j)<<" ";
+	    }
+	    myfile<<"\n";
+	  }
+	  myfile<<"\n";
+	  //myfile << eFusion->getCurrPose() << "\n\n";
 
 	 /*
 	 cv::Mat frame = cv::Mat(Size(640, 480), CV_8UC3,(logReader->rgb)); 
