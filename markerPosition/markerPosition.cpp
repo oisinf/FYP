@@ -16,7 +16,7 @@ using namespace std;
 //Ensure path names correct as no validitation as of yet
 //AR poses and frames (pf)
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/Test2.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/Test1.txt";
 
 //ints to hold frame and patt nums
 int currentFrame, currentPatt;
@@ -28,33 +28,87 @@ string  frame, patt, row1, row2, row3, row4;
 //(stringstream& posesStream)
 int parseText(string line, bool frameFlag, int findFrame)
 {
-  //cout<<line<<"\n";
-
+  stringstream ss;;
+  ss<<findFrame;
+  string findFra = ss.str();
+  string find = " "+findFra;
+  
+  //string find = "Frame "+to_string(findFrame);
+  //cout<<find<<"\n";
     //Matrix filled
     if (line.empty()){
        return true;  
     }
+
+    if (frameFlag == true){
+      if (line.find("Frame")!=string::npos){
+	frame = line.substr(5);
+	istringstream (frame)>>currentFrame;
+    }
+      else if (line.find("Patt")!=string::npos ){
+	patt = line.substr(4);
+	istringstream(patt)>>currentPatt;
+	//cout<<currentPatt<<"\n";
+      }
+      else if(line.find("r0")!=string::npos){
+	row1 = line.substr(2);
+	//cout<<row1<<"\n";
+      }
+      else if(line.find("r1")!=string::npos){
+	row2 = line.substr(2);
+	//cout<<row2<<"\n";
+      }
+      else if(line.find("r2")!=string::npos){
+	row3 = line.substr(2);
+	//cout<<row3<<"\n";
+      }
+      }
+    else if (frameFlag==false){
+      //cout<<"Frame "+findFra<<"\n";
+      //cout<<line<<"\n";
+      //,
+      if(line.find(find,5)!=string::npos){
+	frame = line.substr(5);
+	istringstream(frame)>>currentFrame;
+	cout<<"Ef"<<currentFrame<<"\n";
+      }
+      else if (line.find("r0")!=string::npos && currentFrame == findFrame){
+	row1=line.substr(2);
+      }
+       else if (line.find("r1")!=string::npos && currentFrame == findFrame){
+	row2=line.substr(2);
+      }
+       else if (line.find("r2")!=string::npos && currentFrame == findFrame){
+	row3=line.substr(2);
+      }
+       else if (line.find("r3")!=string::npos && currentFrame == findFrame){
+	row4=line.substr(2);
+      }
+    }
+	
+
+
+
+	  /*
     else if (line.find("Frame")!=string::npos && frameFlag ==true){
     frame = line.substr(5);
     istringstream (frame)>>currentFrame;
-    //current frame, need to find corresponding frame in EF poses
-    //cout<<"frame"<<currentFrame<<"\n";
-    //cout<<"AR "<<line<<"\n"; 
     }
-    else if (line.find("Frame "+findFrame)!=string::npos && frameFlag ==false){
+    else if (line.find("Frame "+findFra)!=string::npos && frameFlag ==false){
       frame = line.substr(5);
-      istringstream (frame )>>currentFrame;
+      istringstream(frame)>>currentFrame;
+      
       //cout<<"EF "<<line<<"\n"; 
-
+      //cout<<"\n ef "<<currentFrame; 
       }
-    else if (line.find("Patt")!=string::npos){
+    else if (line.find("Patt")!=string::npos ){
       patt = line.substr(4);
       istringstream(patt)>>currentPatt;
       //cout<<currentPatt<<"\n";
     }
-    else if(line.find("r0")!=string::npos){
+    if(line.find("r0")!=string::npos){
       row1 = line.substr(2);
-      // cout<<row1<<"\n";
+      //cout<<row1<<"\n";
     }
     else if(line.find("r1")!=string::npos){
       row2 = line.substr(2);
@@ -66,9 +120,9 @@ int parseText(string line, bool frameFlag, int findFrame)
     }
     else if(line.find("r3")!=string::npos){
       row4 = line.substr(2);
-      // cout<<row4<<"\n";
+      //cout<<row4<<"\n";
     }
-  
+	  */
     return false; 
 }
 
@@ -125,32 +179,36 @@ int main ()
       arR1= row1;
       arR2= row2;
       arR3= row3;
+
+
       //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
-      
+
       //get corresponding EF frame
       while(!efPoseStream.eof()){
-
 	getline(efPoseStream, lineEF);
-	
+       
 	if(parseText(lineEF, false, arFrame)){
-	  efFrame = currentFrame;
-	  if (efFrame == arFrame){
-	  efR1 = row1;
-	  efR2 = row2;
-	  efR3 = row3;
-	  efR4 = row4;
-		  
-	}
+	  efFrame = arFrame;
+	  //cout<<currentFrame;
+	  efR1=row1;
+	  efR2=row2;
+	  efR3=row3;
+	  efR4=row4;
+	  // cout<<"EF"<<efFrame<<"\n"<<efR1<<"\n"<<efR2<<"\n"<<efR3<<"\n"<<efR4<<"\n";
+	  // cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
+
+	  break;
 	  
 	}
       }
-      cout<<"EF "<<efFrame<<"\n"<<efR1<<"\n"<<efR2<<"\n"<<efR3<<"\n"<<efR4<<"\n";
 
-      
+      //***Idea, parse artext into a matrix, patt array of matrix and frame id's. Next iterate through array, extract frame. parse ef poses to identify pose at frame. 
+
+      //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
     }
   }
-
 }
+
 
 
 
