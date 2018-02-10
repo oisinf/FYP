@@ -18,131 +18,17 @@ using namespace std;
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
 const char *pfEF = "../TestLogs/EFFrames&Poses/Test1.txt";
 
-//ints to hold frame and patt nums
-int currentFrame, currentPatt;
-
-//strings to temporarily store values before conversion to ints/doubles
-string  frame, patt, row1, row2, row3, row4;
-
-
-//(stringstream& posesStream)
-int parseText(string line, bool frameFlag, int findFrame)
-{
-  stringstream ss;;
-  ss<<findFrame;
-  string findFra = ss.str();
-  string find = " "+findFra;
-  
-  //string find = "Frame "+to_string(findFrame);
-  //cout<<find<<"\n";
-    //Matrix filled
-    if (line.empty()){
-       return true;  
-    }
-
-    if (frameFlag == true){
-      if (line.find("Frame")!=string::npos){
-	frame = line.substr(5);
-	istringstream (frame)>>currentFrame;
-    }
-      else if (line.find("Patt")!=string::npos ){
-	patt = line.substr(4);
-	istringstream(patt)>>currentPatt;
-	//cout<<currentPatt<<"\n";
-      }
-      else if(line.find("r0")!=string::npos){
-	row1 = line.substr(2);
-	//cout<<row1<<"\n";
-      }
-      else if(line.find("r1")!=string::npos){
-	row2 = line.substr(2);
-	//cout<<row2<<"\n";
-      }
-      else if(line.find("r2")!=string::npos){
-	row3 = line.substr(2);
-	//cout<<row3<<"\n";
-      }
-      }
-    else if (frameFlag==false){
-      //cout<<"Frame "+findFra<<"\n";
-      //cout<<line<<"\n";
-      //,
-      if(line.find(find,5)!=string::npos){
-	frame = line.substr(5);
-	istringstream(frame)>>currentFrame;
-	cout<<"Ef"<<currentFrame<<"\n";
-      }
-      else if (line.find("r0")!=string::npos && currentFrame == findFrame){
-	row1=line.substr(2);
-      }
-       else if (line.find("r1")!=string::npos && currentFrame == findFrame){
-	row2=line.substr(2);
-      }
-       else if (line.find("r2")!=string::npos && currentFrame == findFrame){
-	row3=line.substr(2);
-      }
-       else if (line.find("r3")!=string::npos && currentFrame == findFrame){
-	row4=line.substr(2);
-      }
-    }
-	
-
-
-
-	  /*
-    else if (line.find("Frame")!=string::npos && frameFlag ==true){
-    frame = line.substr(5);
-    istringstream (frame)>>currentFrame;
-    }
-    else if (line.find("Frame "+findFra)!=string::npos && frameFlag ==false){
-      frame = line.substr(5);
-      istringstream(frame)>>currentFrame;
-      
-      //cout<<"EF "<<line<<"\n"; 
-      //cout<<"\n ef "<<currentFrame; 
-      }
-    else if (line.find("Patt")!=string::npos ){
-      patt = line.substr(4);
-      istringstream(patt)>>currentPatt;
-      //cout<<currentPatt<<"\n";
-    }
-    if(line.find("r0")!=string::npos){
-      row1 = line.substr(2);
-      //cout<<row1<<"\n";
-    }
-    else if(line.find("r1")!=string::npos){
-      row2 = line.substr(2);
-      //cout<<row2<<"\n";
-    }
-    else if(line.find("r2")!=string::npos){
-      row3 = line.substr(2);
-      //cout<<row3<<"\n";
-    }
-    else if(line.find("r3")!=string::npos){
-      row4 = line.substr(2);
-      //cout<<row4<<"\n";
-    }
-	  */
-    return false; 
-}
-
 
 int main ()
 {
-  //Declare ifstreams to read in txt data
+  //Declare ifstreams to read in txt data, to be passed to parseText
   ifstream posesAR;
   ifstream posesEF;
 
-  //Declare strings to be parsed
-  string  line;
-  string lineEF     ; 
-
-  //open ifstreams
   posesAR.open(pfAR, ios::in);
   posesEF.open(pfEF, ios::in);
 
-  
-  if(!posesAR.is_open()) {
+   if(!posesAR.is_open()) {
       cout<<"cannot open file"<<pfAR;
       return false; 
     }
@@ -160,8 +46,22 @@ int main ()
   string efString((istreambuf_iterator<char>(posesEF)),
 			    istreambuf_iterator<char>());
   stringstream efPoseStream(efString);
-  
   posesEF.close();
+
+  //Declare 
+  /*
+  //Declare strings to be parsed
+  string  line;
+  string lineEF     ; 
+
+  //open ifstreams
+  posesAR.open(pfAR, ios::in);
+  posesEF.open(pfEF, ios::in);
+
+  
+ 
+
+  
 
   //Initialize int and string to hold info from parsing
   int arFrame, arPatt, efFrame;     
@@ -207,6 +107,7 @@ int main ()
       //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
     }
   }
+  */
 }
 
 
