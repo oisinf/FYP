@@ -8,9 +8,11 @@
 #include <fstream>
 #include <stdio.h>
 #include <sstream>
+#include <vector>
+#include <eigen3/Eigen/Core>
 using namespace std; 
 
-
+typedef Eigen::Matrix<double, 4, 4> Pose4X4; 
 //Variables
 
 //Ensure path names correct as no validitation as of yet
@@ -18,6 +20,119 @@ using namespace std;
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
 const char *pfEF = "../TestLogs/EFFrames&Poses/Test1.txt";
 
+struct arInfo{
+  int frame;
+  int pattID;
+  Pose4X4 pose;
+};
+
+struct efInfo{
+  int frame;
+  Pose4X4 pose;
+};
+
+//Vector for ar poses, contains, frame, patt id, and ar poses
+vector<arInfo> arPoses;
+
+//Vector for ef poses, contains, frame and ef poses; 
+vector<efInfo> efPoses;
+
+void parseCols(string row, Pose4X4& pose, int flag)
+{
+  double z = 0.0;
+  double one = 1.0;
+  istringstream r(row);
+  string buff;
+  vector<string>col;
+  while(r>>buff){
+    col.push_back(buff);
+  }
+  if(flag==1){
+    pose(0,0) = atof(col[0].c_str());
+    pose(0,1) = atof(col[1].c_str());
+    pose(0,2) = atof(col[2].c_str());
+    pose(0,3) = atof(col[3].c_str());
+  }
+  else if(flag==2){
+    pose(1,0) = atof(col[0].c_str());
+    pose(1,1) = atof(col[1].c_str());
+    pose(1,2) = atof(col[2].c_str());
+    pose(1,3) = atof(col[3].c_str());
+  }
+  else if(flag==3){
+    pose(2,0) = atof(col[0].c_str());
+    pose(2,1) = atof(col[1].c_str());
+    pose(2,2) = atof(col[2].c_str());
+    pose(2,3) = atof(col[3].c_str());
+  }
+  
+}
+
+int parseText(stringstream& stream, int flag)
+{
+  //variables to hold parsed data temporarily
+  int currentFrame, pattID;
+  string r1,r2,r3,r4, line;
+  int index = 0;
+  arInfo dataAR;
+  efInfo dataEF; 
+  Pose4X4 temp;
+  temp(3,0) = 0.0;
+  temp(3,1) = 0.0;
+  temp(3,2) = 0.0;
+  temp(3,3) = 1.0;
+
+  while(!stream.eof())
+    {
+      getline(stream, line); 
+      
+      //Parsed one frame and 
+      if(line.empty()){
+	//Pass parsed values into either ar or ef struct depending on flag, add to vector
+	if(flag>0){
+	  dataAR.frame = currentFrame;
+	  dataAR.pattID = pattID;
+	  dataAR.pose = temp;
+	  
+	  //have method to construct matrix?
+	  //constructMatrix(r1,r2,r3); 
+	  arPoses.push_back(dataAR);
+	  
+	  
+	  //index++; 
+	}
+	else {
+	  dataEF.frame = currentFrame;
+	  dataEF.pose = temp;
+	  efPoses.push_back(dataEF);
+	}
+      }
+      else if(line.find("Frame")!=string::npos){
+	istringstream (line.substr(5))>>currentFrame;
+      }
+      else if (line.find("Patt")!=string::npos ){
+	istringstream(line.substr(4))>>pattID;
+	//cout<<currentPatt<<"\n";
+      }
+       else if(line.find("r0")!=string::npos){
+	r1 = line.substr(2);
+	parseCols(r1, temp, 1);
+	//cout<<row1<<"\n";
+      }
+      else if(line.find("r1")!=string::npos){
+	r2 = line.substr(2);
+	parseCols(r2, temp, 2);
+	//cout<<row2<<"\n";
+      }
+      else if(line.find("r2")!=string::npos){
+	r3 = line.substr(2);
+	parseCols(r3, temp, 3);
+	//cout<<row3<<"\n";
+      }
+      
+    }
+  return true; 
+}
 
 int main ()
 {
@@ -25,6 +140,13 @@ int main ()
   ifstream posesAR;
   ifstream posesEF;
 
+  //Flags to identify text
+  int arFlag = 1;
+  int efFlag = -1;
+
+  arPoses.begin();
+  efPoses.begin();
+  
   posesAR.open(pfAR, ios::in);
   posesEF.open(pfEF, ios::in);
 
@@ -48,66 +170,38 @@ int main ()
   stringstream efPoseStream(efString);
   posesEF.close();
 
-  //Declare 
+  parseText(arPoseStream,1);
+  parseText(efPoseStream,-1);
+  //testing loop
   /*
-  //Declare strings to be parsed
-  string  line;
-  string lineEF     ; 
-
-  //open ifstreams
-  posesAR.open(pfAR, ios::in);
-  posesEF.open(pfEF, ios::in);
-
-  
- 
-
-  
-
-  //Initialize int and string to hold info from parsing
-  int arFrame, arPatt, efFrame;     
-  string arR1, arR2, arR3, efR1, efR2, efR3, efR4;
-
-  while(!arPoseStream.eof()){
-    getline(arPoseStream, line); 
-
-    //returns true if empty line
-    if(parseText(line, true, -1)){
-      //cout<<currentFrame<<"\n"<<currentPatt<<"\n"<<row1<<"\n"<<row2<<"\n"<<row3<<"\n \n";
-      
-      arFrame=currentFrame;
-      arPatt=currentPatt;
-      arR1= row1;
-      arR2= row2;
-      arR3= row3;
-
-
-      //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
-
-      //get corresponding EF frame
-      while(!efPoseStream.eof()){
-	getline(efPoseStream, lineEF);
-       
-	if(parseText(lineEF, false, arFrame)){
-	  efFrame = arFrame;
-	  //cout<<currentFrame;
-	  efR1=row1;
-	  efR2=row2;
-	  efR3=row3;
-	  efR4=row4;
-	  // cout<<"EF"<<efFrame<<"\n"<<efR1<<"\n"<<efR2<<"\n"<<efR3<<"\n"<<efR4<<"\n";
-	  // cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
-
-	  break;
-	  
-	}
+  for (int i = 0; i<arPoses.size(); i++)
+    {
+      cout<<arPoses[i].frame<<"\n";
+      cout<<arPoses[i].pattID<<"\n";
+      cout<<arPoses[i].pose(0,0)<<endl;
+      cout<<arPoses[i].pose(2,3)<<endl;
       }
-
-      //***Idea, parse artext into a matrix, patt array of matrix and frame id's. Next iterate through array, extract frame. parse ef poses to identify pose at frame. 
-
-      //cout<<"AR "<<arFrame<<"\n"<<arPatt<<"\n"<<arR1<<"\n"<<arR2<<"\n"<<arR3<<"\n";
+  
+  cout<<"AR Pose"<<endl;
+  cout <<arPoses[20].frame<<"\n";
+  cout<<arPoses[20].pattID<<"\n";
+  for (int i = 0; i<4; i++){
+    for (int j = 0; j<4; j++){
+      cout<<arPoses[20].pose(i,j)<<endl;
     }
-  }
+    }
+      
+      cout<<"EF Pose"<<endl;
+      cout <<efPoses[20].frame<<"\n";
+      for (int i = 0; i<4; i++){
+      for (int j = 0; j<4; j++){
+      cout<<efPoses[20].pose(i,j)<<endl;
+    }
+    }
+  
   */
+
+  
 }
 
 
