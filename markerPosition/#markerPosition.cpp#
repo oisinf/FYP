@@ -130,7 +130,10 @@ int parseText(stringstream& stream, int flag)
 }
 
 void multiplyMatrices(Pose4X4 arPose, Pose4X4 efPose){
-  cout<<"test "; 
+  cout<<"test ";
+
+  
+  
 }
 
 void getMatrix(int currentPatt){
