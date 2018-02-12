@@ -173,12 +173,13 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 	// Get the transformation between the marker and the real camera into gPatt_trans.
 	err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
 	
-	fprintf(fp, "%s %i %s", "Frame ",currentFrame, "\n");
-	fprintf(fp, "%s %i %s", "Patt" , pattIDs[i], "\n");
+	fprintf(fp, "%s %i \n", "Frame",currentFrame );
+	fprintf(fp, "%s %i \n", "Patt" , pattIDs[i] );
 	int i ,j;  
 	for (i=0; i<3; i++){
+	  fprintf(fp, "%s%i ", "r",i ); 
 	  for (j=0; j<4; j++){
-	    fprintf(fp, "%f %s", gPatt_trans[i][j]," ");
+	    fprintf(fp, "%f ", gPatt_trans[i][j]);
 	  }
 	  fprintf(fp, "\n");
 	}
@@ -249,7 +250,7 @@ int main(void)
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
   
-  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/hiroKanji75cm2.txt", "w");
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test.txt", "w");
 
   
   while (logreader->grabNext())
