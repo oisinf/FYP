@@ -1,0 +1,17 @@
+/**This program is to parse text files containing 
+ *frames and poses. 
+ */
+
+//Includes
+#include <iostream>
+#include <string>
+
+//Variables
+
+//AR poses and frames
+const String ARpf = " 
+int main ()
+{
+  
+
+}
