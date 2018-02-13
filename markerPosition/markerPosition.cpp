@@ -10,11 +10,14 @@
 #include <sstream>
 #include <vector>
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 using namespace std; 
 
-typedef Eigen::Matrix<double, 4, 4> Pose4X4; 
+typedef Eigen::Matrix<double, 4, 4> Pose4X4;
+typedef Eigen::Matrix<double, 4, 1> XYZ; 
 //Variables
-
+//typedef Eigen::Quaternion<double> quatern; 
 //Ensure path names correct as no validitation as of yet
 //AR poses and frames (pf)
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
@@ -36,6 +39,15 @@ vector<arInfo> arPoses;
 
 //Vector for ef poses, contains, frame and ef poses; 
 vector<efInfo> efPoses;
+
+//hold avg x,y,z of each patt
+vector<XYZ> finalXYZ;
+//Quaterions to hold global coords
+//vector<quatern> globalCoords; 
+
+//intial quaternion
+//Eigen::Quaterniond finalCoord;
+
 
 int numPatts; 
 
@@ -128,28 +140,61 @@ int parseText(stringstream& stream, int flag)
     }
   return true; 
 }
+/*
+void arPoseInGlobalCoords(Pose4X4 arPose, Pose4X4 efPose){
 
-void multiplyMatrices(Pose4X4 arPose, Pose4X4 efPose){
-  cout<<"test "; 
+  
+  // cout<<arPose.col(3).dot(efPose.col(3))<<endl;
+
+  
+  
+  cout<<arPose*efPose<<endl;
+  //arPose dot efPose = arPose in global coords
+
+  //cout<<arPose.dot(efPose);
+  
 }
-
+*/
 void getMatrix(int currentPatt){
 
+   cout<<currentPatt<<endl;
+   int avg = 0;
+   XYZ avgTemp;
+   avgTemp<<0,0,0,0;
+   Pose4X4 temp;
+   temp<<
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0 ,0, 0;
+     
+   cout<<temp<<endl; 
+   
   for (int i = 0; i<arPoses.size();i++){
     if (arPoses[i].pattID == currentPatt){
-      cout<<currentPatt<<endl;
+      
       for(int j = 0; j<efPoses.size(); j++){
 	if(arPoses[i].frame == efPoses[j].frame){
-	  cout<<"ar pose frame"<<arPoses[i].frame<<endl;
-	  cout<<"ef pose frame"<<efPoses[j].frame<<endl;
+	  //cout<<"ar pose frame"<<arPoses[i].frame<<endl;
+	  //cout<<"ef pose frame"<<efPoses[j].frame<<endl;
 
 	  //do something with the matrixs
+	 
+	  //arPoseInGlobalCoords(arPoses[i].pose, efPoses[j].pose);
 
-	  multiplyMatrices(arPoses[i].pose, efPoses[j].pose); 
+	  temp = arPoses[i].pose*efPoses[j].pose;
+	  //cout<<temp<<endl;
+	  avgTemp = avgTemp+temp.col(3); 
+	  // cout<<avgTemp<<endl;
+	  
+	  avg++;
 	}
       }
     }
   }
+  avgTemp = avgTemp/avg;
+  //cout<<"average"<<avgTemp<<endl;
+  finalXYZ.push_back(avgTemp); 
 }
 
 int main ()
@@ -191,14 +236,13 @@ int main ()
   parseText(arPoseStream,1);
   parseText(efPoseStream,-1);
 
-  cout<<numPatts<<endl;
-
   for (int i=0; i<numPatts; i++){
-  getMatrix(i);
+    getMatrix(i);
   }
 
   
-  
+  cout<<"pattern 1 \n"<<finalXYZ[0]<<endl;
+  cout<<"pattern 2 \n"<<finalXYZ[1]<<endl;
   /*/testing loop
   for (int i = 0; i<arPoses.size(); i++)
     {
