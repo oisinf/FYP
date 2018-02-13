@@ -250,7 +250,7 @@ int main ()
   double ys= finalXYZ[0](1,0)-finalXYZ[1](1,0);
   double zs= finalXYZ[0](2,0)-finalXYZ[1](2,0);
 
- cout<<sqrt(((xs)^2)+((ys)^2)+((zs)^2));
+ cout<<sqrt(((xs).+((ys)^2)+((zs)^2));
   
   /*/testing loop
   for (int i = 0; i<arPoses.size(); i++)
