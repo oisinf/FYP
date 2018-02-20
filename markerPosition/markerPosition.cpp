@@ -45,7 +45,7 @@ vector<efInfo> efPoses;
 vector<XYZ> globalXYZ;
 
 vector<Eigen::Quaternion<double> > globalCoordsQuat;
-vector<Pose4X4> multiMarkerCoords;
+vector<Pose4X4> globalMarkerCoords;
 //Quaterions to hold global coords
 
 //intial quaternion
@@ -143,21 +143,23 @@ int parseText(stringstream& stream, int flag)
     }
   return true; 
 }
-/*
-void arPoseInGlobalCoords(Pose4X4 arPose, Pose4X4 efPose){
 
-  
-  // cout<<arPose.col(3).dot(efPose.col(3))<<endl;
+Eigen::Quaternion<double> slerpQuaternion(){
 
+  Eigen::Quaternion<double> temp; 
+  Eigen::Quaternion<double> total = globalCoordsQuat[0];
   
-  
-  cout<<arPose*efPose<<endl;
-  //arPose dot efPose = arPose in global coords
+  for (int i=1; i< globalCoordsQuat.size(); i++){
+   
+    temp = globalCoordsQuat[i];
+    //unsure what 1 should be, defines the scalar (time?) difference between quaternions
+    total = total.slerp(1,temp);
+    
+  }
+  return total; 
 
-  //cout<<arPose.dot(efPose);
-  
 }
-*/
+
 void getMatrix(int currentPatt){
 
    cout<<currentPatt<<endl;
@@ -170,16 +172,16 @@ void getMatrix(int currentPatt){
      0, 0, 0, 0,
      0, 0, 0, 0,
      0, 0 ,0, 0;
+    Pose4X4 finalGlobalCoord;
+   finalGlobalCoord<<
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0 ,0, 0;
      
-   cout<<temp<<endl;
-
    //possibly 1,0,0,0, unsure what to instansiate quaternions as ***new note, identity = 1,0,0,0
    Eigen::Quaternion<double> total(1,0,0,0);
    Eigen::Quaternion<double> local(1,0,0,0);
-
-
-   //cout<<"total quaternion "<<total;
-   //cout<<"local quaternion "<<local;
    
   for (int i = 0; i<arPoses.size();i++){
     if (arPoses[i].pattID == currentPatt){
@@ -189,11 +191,6 @@ void getMatrix(int currentPatt){
 	  //cout<<"ar pose frame"<<arPoses[i].frame<<endl;
 	  //cout<<"ef pose frame"<<efPoses[j].frame<<endl;
 
-	  
-	  //Need to extract 3X3 rotation from 4X4 homogenous coordinate to create quaterion.
-
-
-	  
 	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
 	  temp = arPoses[i].pose*efPoses[j].pose;
 
@@ -215,45 +212,18 @@ void getMatrix(int currentPatt){
   }
 
   //iterate through quaternion vector, slerp, then recompose into 
-  
+  total = slerpQuaternion();
   avgTemp = avgTemp/avg;
+
+
+  finalGlobalCoord.block<3,3>(0,0) = total.toRotationMatrix();
+  finalGlobalCoord.col(3) = avgTemp;
+
+  cout<<finalGlobalCoord<<endl; 
+  
   //cout<<"average"<<avgTemp<<endl;
   //Average x,y,z coordinates
-  globalXYZ.push_back(avgTemp);
-  avgRotations.push_back(total); 
-}
-
-void multiMarkerConfig(){
-
-  //get first marker xyz and quaterion to Pose4X4, same fo
-
-  Pose4X4 first;
-  first.block<3,3>(0,0) = avgRotations[0].toRotationMatrix();
-  first.row(3)<<0,0,0,1;
-  first.col(3) = finalXYZ[0];
-  
-
-  cout<<"first marker position \n "<<first<<endl;
-
-  //testing
-  Pose4X4 second;
-  second.block<3,3>(0,0) = avgRotations[1].toRotationMatrix();
-  second.row(3)<<0,0,0,1;
-  second.col(3) = finalXYZ[1];
-
-  // cout<<"second marker position \n "<<second<<endl;
-
-  //‘Pose4X4 {aka class Eigen::Matrix<double, 4, 4>}’ has no member named ‘tranpose’
-  //using adjoint as from eigen website For real matrices, conjugate() is a no-operation, and so adjoint() is equivalent to transpose().
-  cout<<"inverse \n"<<first.inverse()<<endl;
-  //not producing identity matrix
-  cout<<"identity \n "<<first*(first.inverse())<<endl;
-  cout<<"marker two in relation to first marker \n"<<second*(first.inverse());
-  // cout<<"identity matrix \n"<<first<<endl;
-  //multiply by inverse/tranpose to get identity martrix of first marker
-  //multiply all other 
-  
-  
+  globalMarkerCoords.push_back(finalGlobalCoord);
 }
 
 int main ()
@@ -299,9 +269,9 @@ int main ()
     getMatrix(i);
   }
 
-  
-  cout<<"pattern 1 x,y,z,w \n"<<finalXYZ[0]<<endl;
-  cout<<"pattern 2 x,y,z,w \n"<<finalXYZ[1]<<endl;
+  //testing
+  //cout<<"pattern 1 x,y,z,w \n"<<finalXYZ[0]<<endl;
+  //cout<<"pattern 2 x,y,z,w \n"<<finalXYZ[1]<<endl;
 
   //quick euclidean avg
   // double xs=
@@ -321,7 +291,7 @@ int main ()
   multiMarkerConfig(); 
   // cout<<"vector "<<finalXYZ[0]<<endl;
   //cout<<"tranpose"<<finalXYZ[0].inverse()<<endl;
-  */
+  
   //testing loop
   for (int i = 0; i<arPoses.size(); i++)
     {
