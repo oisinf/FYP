@@ -12,6 +12,7 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
+#include <cmath>
 using namespace std; 
 
 typedef Eigen::Matrix<double, 4, 4> Pose4X4;
@@ -20,8 +21,8 @@ typedef Eigen::Matrix<double, 4, 1> XYZ;
 //typedef Eigen::Quaternion<double> quatern; 
 //Ensure path names correct as no validitation as of yet
 //AR poses and frames (pf)
-const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/test.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/Test1.txt";
+const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/75cm.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/75Test.txt";
 
 struct arInfo{
   int frame;
@@ -41,9 +42,11 @@ vector<arInfo> arPoses;
 vector<efInfo> efPoses;
 
 //hold avg x,y,z of each patt
-vector<XYZ> finalXYZ;
+vector<XYZ> globalXYZ;
+
+vector<Eigen::Quaternion<double> > globalCoordsQuat;
+vector<Pose4X4> multiMarkerCoords;
 //Quaterions to hold global coords
-//vector<quatern> globalCoords; 
 
 //intial quaternion
 //Eigen::Quaterniond finalCoord;
@@ -168,7 +171,15 @@ void getMatrix(int currentPatt){
      0, 0, 0, 0,
      0, 0 ,0, 0;
      
-   cout<<temp<<endl; 
+   cout<<temp<<endl;
+
+   //possibly 1,0,0,0, unsure what to instansiate quaternions as ***new note, identity = 1,0,0,0
+   Eigen::Quaternion<double> total(1,0,0,0);
+   Eigen::Quaternion<double> local(1,0,0,0);
+
+
+   //cout<<"total quaternion "<<total;
+   //cout<<"local quaternion "<<local;
    
   for (int i = 0; i<arPoses.size();i++){
     if (arPoses[i].pattID == currentPatt){
@@ -178,23 +189,71 @@ void getMatrix(int currentPatt){
 	  //cout<<"ar pose frame"<<arPoses[i].frame<<endl;
 	  //cout<<"ef pose frame"<<efPoses[j].frame<<endl;
 
-	  //do something with the matrixs
-	 
-	  //arPoseInGlobalCoords(arPoses[i].pose, efPoses[j].pose);
+	  
+	  //Need to extract 3X3 rotation from 4X4 homogenous coordinate to create quaterion.
 
+
+	  
+	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
 	  temp = arPoses[i].pose*efPoses[j].pose;
-	  //cout<<temp<<endl;
+
+	  //split temp into quaternion+xyz
+	  
+	  //local rotation i.e rotation of the marker in that frame
+	  //push local into vector, slerp vector together
+	  local = temp.block<3,3>(0,0);
+	  globalCoordsQuat.push_back(local);
+	  //Adding up all x,y,z to get average x,y,z of marker
 	  avgTemp = avgTemp+temp.col(3); 
 	  // cout<<avgTemp<<endl;
-	  
+
+	  //Increment for each frame pose is in
 	  avg++;
 	}
       }
     }
   }
+
+  //iterate through quaternion vector, slerp, then recompose into 
+  
   avgTemp = avgTemp/avg;
   //cout<<"average"<<avgTemp<<endl;
-  finalXYZ.push_back(avgTemp); 
+  //Average x,y,z coordinates
+  globalXYZ.push_back(avgTemp);
+  avgRotations.push_back(total); 
+}
+
+void multiMarkerConfig(){
+
+  //get first marker xyz and quaterion to Pose4X4, same fo
+
+  Pose4X4 first;
+  first.block<3,3>(0,0) = avgRotations[0].toRotationMatrix();
+  first.row(3)<<0,0,0,1;
+  first.col(3) = finalXYZ[0];
+  
+
+  cout<<"first marker position \n "<<first<<endl;
+
+  //testing
+  Pose4X4 second;
+  second.block<3,3>(0,0) = avgRotations[1].toRotationMatrix();
+  second.row(3)<<0,0,0,1;
+  second.col(3) = finalXYZ[1];
+
+  // cout<<"second marker position \n "<<second<<endl;
+
+  //‘Pose4X4 {aka class Eigen::Matrix<double, 4, 4>}’ has no member named ‘tranpose’
+  //using adjoint as from eigen website For real matrices, conjugate() is a no-operation, and so adjoint() is equivalent to transpose().
+  cout<<"inverse \n"<<first.inverse()<<endl;
+  //not producing identity matrix
+  cout<<"identity \n "<<first*(first.inverse())<<endl;
+  cout<<"marker two in relation to first marker \n"<<second*(first.inverse());
+  // cout<<"identity matrix \n"<<first<<endl;
+  //multiply by inverse/tranpose to get identity martrix of first marker
+  //multiply all other 
+  
+  
 }
 
 int main ()
@@ -241,18 +300,29 @@ int main ()
   }
 
   
-  cout<<"pattern 1 \n"<<finalXYZ[0]<<endl;
-  cout<<"pattern 2 \n"<<finalXYZ[1]<<endl;
+  cout<<"pattern 1 x,y,z,w \n"<<finalXYZ[0]<<endl;
+  cout<<"pattern 2 x,y,z,w \n"<<finalXYZ[1]<<endl;
 
   //quick euclidean avg
   // double xs=
+  /*
   double  xs = finalXYZ[0](0,0)-finalXYZ[1](0,0);
   double ys= finalXYZ[0](1,0)-finalXYZ[1](1,0);
   double zs= finalXYZ[0](2,0)-finalXYZ[1](2,0);
 
- cout<<sqrt(((xs)^2)+((ys)^2)+((zs)^2));
+  cout<<"distance mm:"<<sqrt((pow(xs,2))+(pow(ys,2))+(pow(zs, 2)))<<"\n";
+
+  //test result differences 
+  //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
+  //cout<<"distance mm:"<<sqrt((pow(-1428.25,2))+(pow(354.93,2))+(pow(1009.2, 2)))<<"\n";
+
   
-  /*/testing loop
+  
+  multiMarkerConfig(); 
+  // cout<<"vector "<<finalXYZ[0]<<endl;
+  //cout<<"tranpose"<<finalXYZ[0].inverse()<<endl;
+  */
+  //testing loop
   for (int i = 0; i<arPoses.size(); i++)
     {
       cout<<arPoses[i].frame<<"\n";
