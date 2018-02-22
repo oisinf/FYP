@@ -13,12 +13,13 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
 #include <cmath>
+#include <iostream>
+#include <fstream>
 using namespace std; 
 
 typedef Eigen::Matrix<double, 4, 4> Pose4X4;
 typedef Eigen::Matrix<double, 4, 1> XYZ; 
 //Variables
-//typedef Eigen::Quaternion<double> quatern; 
 //Ensure path names correct as no validitation as of yet
 //AR poses and frames (pf)
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/75cm.txt";
@@ -47,10 +48,6 @@ vector<XYZ> globalXYZ;
 vector<Eigen::Quaternion<double> > globalCoordsQuat;
 vector<Pose4X4> globalMarkerCoords;
 //Quaterions to hold global coords
-
-//intial quaternion
-//Eigen::Quaterniond finalCoord;
-
 
 int numPatts; 
 
@@ -226,6 +223,20 @@ void getMatrix(int currentPatt){
   globalMarkerCoords.push_back(finalGlobalCoord);
 }
 
+void getMultiMarkerConfig(Pose4X4 originP){
+  
+  //testing so far
+  //cout<<"inverse of origin pose \n"<<originP.inverse()<<endl;
+  cout<<"identity \n"<<originP*(originP.inverse())<<endl;
+  cout<<"2nd marker position \n"<<globalMarkerCoords[1]*(originP.inverse())<<endl;
+  /*
+  ofstream fp;
+  fp.open("/home/oisin/libs/markerPosition/config.dat");
+  fp<<originP*(originP.inverse())<<endl;
+  fp<<globalMarkerCoords[1]*(originP.inverse());
+  fp.close();
+  */
+}
 int main ()
 {
   //Declare ifstreams to read in txt data, to be passed to parseText
@@ -269,53 +280,27 @@ int main ()
     getMatrix(i);
   }
 
+  getMultiMarkerConfig(globalMarkerCoords[0]);
+
   //testing
   //cout<<"pattern 1 x,y,z,w \n"<<finalXYZ[0]<<endl;
   //cout<<"pattern 2 x,y,z,w \n"<<finalXYZ[1]<<endl;
 
   //quick euclidean avg
   // double xs=
-  /*
-  double  xs = finalXYZ[0](0,0)-finalXYZ[1](0,0);
-  double ys= finalXYZ[0](1,0)-finalXYZ[1](1,0);
-  double zs= finalXYZ[0](2,0)-finalXYZ[1](2,0);
+  
+  double  xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
+  double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);
+  double zs= globalMarkerCoords[0](2,3)-globalMarkerCoords[1](2,3);
 
   cout<<"distance mm:"<<sqrt((pow(xs,2))+(pow(ys,2))+(pow(zs, 2)))<<"\n";
-
+  
   //test result differences 
   //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
-  //cout<<"distance mm:"<<sqrt((pow(-1428.25,2))+(pow(354.93,2))+(pow(1009.2, 2)))<<"\n";
 
-  
-  
-  multiMarkerConfig(); 
   // cout<<"vector "<<finalXYZ[0]<<endl;
   //cout<<"tranpose"<<finalXYZ[0].inverse()<<endl;
   
-  //testing loop
-  for (int i = 0; i<arPoses.size(); i++)
-    {
-      cout<<arPoses[i].frame<<"\n";
-      cout<<arPoses[i].pattID<<"\n";
-      cout<<arPoses[i].pose(0,0)<<endl;
-      cout<<arPoses[i].pose(2,3)<<endl;
-      }
-  cout<<"AR Pose"<<endl;
-  cout <<arPoses[20].frame<<"\n";
-  cout<<arPoses[20].pattID<<"\n";
-  for (int i = 0; i<4; i++){
-    for (int j = 0; j<4; j++){
-      cout<<arPoses[20].pose(i,j)<<endl;
-    }
-    }  
-      cout<<"EF Pose"<<endl;
-      cout <<efPoses[20].frame<<"\n";
-      for (int i = 0; i<4; i++){
-      for (int j = 0; j<4; j++){
-      cout<<efPoses[20].pose(i,j)<<endl;
-    }
-    }
-  */ 
 }
 
 
