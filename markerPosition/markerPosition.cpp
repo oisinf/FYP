@@ -35,7 +35,12 @@ struct efInfo{
   int frame;
   Pose4X4 pose;
 };
-
+/*
+struct visualizeXYZ{
+  XYZ x;
+  XYZ y;
+  XYZ z; 
+  }*/
 //Vector for ar poses, contains, frame, patt id, and ar poses
 vector<arInfo> arPoses;
 
@@ -43,7 +48,7 @@ vector<arInfo> arPoses;
 vector<efInfo> efPoses;
 
 //hold avg x,y,z of each patt
-vector<XYZ> globalXYZ;
+//vector<visualizeXYZ> xyzVisualizationCoords;
 
 vector<Eigen::Quaternion<double> > globalCoordsQuat;
 vector<Pose4X4> globalMarkerCoords;
@@ -191,16 +196,32 @@ void getMatrix(int currentPatt){
 	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
 	  temp = arPoses[i].pose*efPoses[j].pose;
 
+	  //for visualization, get 4 points of edge of markers
+	  //Eigen::Vector4d P00(0,0,0,1),P10(1,0,0,1);
+
+	  //Eigen::Vector3d EF00 = temp * P00;
+	  //Eigen::Vector3d EF10 = temp * P10;
+
+	  Eigen::Matrix4d TagPoints;
+	  TagPoints <<
+	    0,1,1,0,
+	    0,0,1,1,
+	    0,0,0,0,
+	    1,1,1,1;
+
+	  //4 corners of the tag
+	  Eigen::Matrix4d EFPoints = temp * TagPoints;
+
+	  
 	  //split temp into quaternion+xyz
 	  
 	  //local rotation i.e rotation of the marker in that frame
 	  //push local into vector, slerp vector together
 	  local = temp.block<3,3>(0,0);
 	  globalCoordsQuat.push_back(local);
+	  
 	  //Adding up all x,y,z to get average x,y,z of marker
 	  avgTemp = avgTemp+temp.col(3); 
-	  // cout<<avgTemp<<endl;
-
 	  //Increment for each frame pose is in
 	  avg++;
 	}
@@ -227,8 +248,8 @@ void getMultiMarkerConfig(Pose4X4 originP){
   
   //testing so far
   //cout<<"inverse of origin pose \n"<<originP.inverse()<<endl;
-  cout<<"identity \n"<<originP*(originP.inverse())<<endl;
-  cout<<"2nd marker position \n"<<globalMarkerCoords[1]*(originP.inverse())<<endl;
+  //cout<<"identity \n"<<originP*(originP.inverse())<<endl;
+  // cout<<"2nd marker position \n"<<globalMarkerCoords[1]*(originP.inverse())<<endl;
   /*
   ofstream fp;
   fp.open("/home/oisin/libs/markerPosition/config.dat");
@@ -237,6 +258,45 @@ void getMultiMarkerConfig(Pose4X4 originP){
   fp.close();
   */
 }
+/*
+void visualizeMarkers(Pose4X4 coord)
+{
+  // cout<<coord<<endl;
+  visualizeXYZ  markerXYZ;
+  XYZ  x(1,0,0,1),y(0,1,0,1),z(0,0,1,1);
+
+  cout<<"visualization \n";
+  cout<<coord*x<<endl;
+  cout<<coord*y<<endl;
+  cout<<coord*z<<endl;
+  
+  markerXYZ.x = coord*x;
+  markerXYZ.y = coord*y;
+  markerXYZ.z = coord*z;
+
+  xyzVisualizationCoords.push_back(markerXYZ);
+    
+  }*/
+
+void outputPLY(visualizeXYZ coord, ofstream& fp){
+
+  Eigen::Matrix<double, 1,4> flattenX,flattenY,flattenZ;
+  cout<<xyzVisualizationCoords.size()<<"\n";
+  flattenX = coord.x;
+  flattenY = coord.y;
+  flattenZ = coord.z;
+  cout<<coord.x<<endl;
+  
+  cout<<"ply \n";
+  cout<<flattenX.block<1,3>(0,0)<<endl;
+  cout<<flattenY.block<1,3>(0,0)<<endl;
+  cout<<flattenZ.block<1,3>(0,0)<<endl;
+  
+  fp<<flattenX.block<1,3>(0,0)<<"\n";
+  fp<<flattenY.block<1,3>(0,0)<<"\n";
+  fp<<flattenZ.block<1,3>(0,0)<<"\n";
+}
+
 int main ()
 {
   //Declare ifstreams to read in txt data, to be passed to parseText
@@ -280,14 +340,20 @@ int main ()
     getMatrix(i);
   }
 
-  getMultiMarkerConfig(globalMarkerCoords[0]);
-
-  //testing
-  //cout<<"pattern 1 x,y,z,w \n"<<finalXYZ[0]<<endl;
-  //cout<<"pattern 2 x,y,z,w \n"<<finalXYZ[1]<<endl;
-
-  //quick euclidean avg
-  // double xs=
+  //getMultiMarkerConfig(globalMarkerCoords[0]);
+  /*
+  for(int i=0;i<globalMarkerCoords.size(); i++){
+    visualizeMarkers(globalMarkerCoords[i]);
+  }
+  */
+  ofstream fp;
+  fp.open("/home/oisin/libs/markerPosition/visualize.ply");
+  fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<xyzVisualizationCoords.size()*3;
+  fp<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nend_header\n";
+  for(int i=0;i<xyzVisualizationCoords.size();i++){       
+  outputPLY(xyzVisualizationCoords[i], fp);
+  }
+  fp.close();
   
   double  xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
   double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);

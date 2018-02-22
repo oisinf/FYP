@@ -1,0 +1,14 @@
+ply
+format ascii 1.0
+comment visualization of marker positions by Oisin Feely
+element vertex 6
+property float32 x
+property float32 y
+property float32 z
+end_header
+321.996 79.5445 1043.55
+323.368 79.7518 1043.28
+322.771 78.5015 1042.99
+-352.707  219.277  845.799
+-354.051  218.873  845.973
+-353.507  218.978  844.672
