@@ -35,20 +35,15 @@ struct efInfo{
   int frame;
   Pose4X4 pose;
 };
-/*
-struct visualizeXYZ{
-  XYZ x;
-  XYZ y;
-  XYZ z; 
-  }*/
+
 //Vector for ar poses, contains, frame, patt id, and ar poses
 vector<arInfo> arPoses;
 
 //Vector for ef poses, contains, frame and ef poses; 
 vector<efInfo> efPoses;
 
-//hold avg x,y,z of each patt
-//vector<visualizeXYZ> xyzVisualizationCoords;
+//vector to hold tag points relative to ef
+vector<Eigen::Matrix4d> tagPoints; 
 
 vector<Eigen::Quaternion<double> > globalCoordsQuat;
 vector<Pose4X4> globalMarkerCoords;
@@ -180,6 +175,21 @@ void getMatrix(int currentPatt){
      0, 0, 0, 0,
      0, 0, 0, 0,
      0, 0 ,0, 0;
+
+   Eigen::Matrix4d TagPoints;
+   TagPoints <<
+     0,10,10,0,
+     0,0,10,10,
+     0,0,0,0,
+     1,1,1,1;
+
+   Eigen::Matrix4d EFPoints;
+   EFPoints<<
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0, 0, 0,
+     0, 0 ,0, 0;
+
      
    //possibly 1,0,0,0, unsure what to instansiate quaternions as ***new note, identity = 1,0,0,0
    Eigen::Quaternion<double> total(1,0,0,0);
@@ -190,8 +200,6 @@ void getMatrix(int currentPatt){
       
       for(int j = 0; j<efPoses.size(); j++){
 	if(arPoses[i].frame == efPoses[j].frame){
-	  //cout<<"ar pose frame"<<arPoses[i].frame<<endl;
-	  //cout<<"ef pose frame"<<efPoses[j].frame<<endl;
 
 	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
 	  temp = arPoses[i].pose*efPoses[j].pose;
@@ -202,16 +210,9 @@ void getMatrix(int currentPatt){
 	  //Eigen::Vector3d EF00 = temp * P00;
 	  //Eigen::Vector3d EF10 = temp * P10;
 
-	  Eigen::Matrix4d TagPoints;
-	  TagPoints <<
-	    0,1,1,0,
-	    0,0,1,1,
-	    0,0,0,0,
-	    1,1,1,1;
-
-	  //4 corners of the tag
-	  Eigen::Matrix4d EFPoints = temp * TagPoints;
-
+	  //4 corners of the tag, get avg
+	  //EFPoints = temp * TagPoints;
+	  EFPoints = EFPoints+(temp*TagPoints);
 	  
 	  //split temp into quaternion+xyz
 	  
@@ -232,13 +233,16 @@ void getMatrix(int currentPatt){
   //iterate through quaternion vector, slerp, then recompose into 
   total = slerpQuaternion();
   avgTemp = avgTemp/avg;
-
-
+  cout<<EFPoints<<endl;
+  EFPoints = EFPoints/avg;
+  cout<<EFPoints<<endl;
   finalGlobalCoord.block<3,3>(0,0) = total.toRotationMatrix();
   finalGlobalCoord.col(3) = avgTemp;
 
-  cout<<finalGlobalCoord<<endl; 
+  //cout<<finalGlobalCoord<<endl; 
+  //cout<<EFPoints<<endl;
   
+  tagPoints.push_back(EFPoints);
   //cout<<"average"<<avgTemp<<endl;
   //Average x,y,z coordinates
   globalMarkerCoords.push_back(finalGlobalCoord);
@@ -246,55 +250,42 @@ void getMatrix(int currentPatt){
 
 void getMultiMarkerConfig(Pose4X4 originP){
   
-  //testing so far
-  //cout<<"inverse of origin pose \n"<<originP.inverse()<<endl;
-  //cout<<"identity \n"<<originP*(originP.inverse())<<endl;
-  // cout<<"2nd marker position \n"<<globalMarkerCoords[1]*(originP.inverse())<<endl;
-  /*
-  ofstream fp;
-  fp.open("/home/oisin/libs/markerPosition/config.dat");
-  fp<<originP*(originP.inverse())<<endl;
-  fp<<globalMarkerCoords[1]*(originP.inverse());
-  fp.close();
-  */
 }
-/*
-void visualizeMarkers(Pose4X4 coord)
-{
-  // cout<<coord<<endl;
-  visualizeXYZ  markerXYZ;
-  XYZ  x(1,0,0,1),y(0,1,0,1),z(0,0,1,1);
 
-  cout<<"visualization \n";
-  cout<<coord*x<<endl;
-  cout<<coord*y<<endl;
-  cout<<coord*z<<endl;
-  
-  markerXYZ.x = coord*x;
-  markerXYZ.y = coord*y;
-  markerXYZ.z = coord*z;
+void outputPLY(){
 
-  xyzVisualizationCoords.push_back(markerXYZ);
+  //output stream 
+  ofstream fp;
+
+  fp.open("/home/oisin/libs/markerPosition/visualize.ply");
+  fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
+
+  for(int i=0;i<tagPoints.size(); i++){
+
+    Eigen::Matrix<double, 3,4> tagPts = (tagPoints[i].block<3,4>(0,0))/1000;
+    cout<<tagPts<<endl;
+
+    for(int j=0; j<4;j++){
+      //need to divide by 100 as currently in mms
+      Eigen::RowVector3d flatten = tagPts.col(j);
+      
+      cout<<flatten<<endl;
+      fp<<flatten<<endl;
+    }
+  }
+  int count=0;
+  for(int g=0; g<tagPoints.size(); g++){
+    fp<<4<<" ";
     
-  }*/
-
-void outputPLY(visualizeXYZ coord, ofstream& fp){
-
-  Eigen::Matrix<double, 1,4> flattenX,flattenY,flattenZ;
-  cout<<xyzVisualizationCoords.size()<<"\n";
-  flattenX = coord.x;
-  flattenY = coord.y;
-  flattenZ = coord.z;
-  cout<<coord.x<<endl;
-  
-  cout<<"ply \n";
-  cout<<flattenX.block<1,3>(0,0)<<endl;
-  cout<<flattenY.block<1,3>(0,0)<<endl;
-  cout<<flattenZ.block<1,3>(0,0)<<endl;
-  
-  fp<<flattenX.block<1,3>(0,0)<<"\n";
-  fp<<flattenY.block<1,3>(0,0)<<"\n";
-  fp<<flattenZ.block<1,3>(0,0)<<"\n";
+    for(int k=0; k<4; k++){
+      fp<<count<<" ";
+      count++;
+    }
+    fp<<endl;
+  }
+  fp.close();
+ 
+ 
 }
 
 int main ()
@@ -306,7 +297,7 @@ int main ()
   //Flags to identify text
   int arFlag = 1;
   int efFlag = -1;
-
+  
   arPoses.begin();
   efPoses.begin();
   
@@ -346,16 +337,9 @@ int main ()
     visualizeMarkers(globalMarkerCoords[i]);
   }
   */
-  ofstream fp;
-  fp.open("/home/oisin/libs/markerPosition/visualize.ply");
-  fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<xyzVisualizationCoords.size()*3;
-  fp<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nend_header\n";
-  for(int i=0;i<xyzVisualizationCoords.size();i++){       
-  outputPLY(xyzVisualizationCoords[i], fp);
-  }
-  fp.close();
+  outputPLY();
   
-  double  xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
+  double xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
   double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);
   double zs= globalMarkerCoords[0](2,3)-globalMarkerCoords[1](2,3);
 
@@ -364,8 +348,6 @@ int main ()
   //test result differences 
   //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
 
-  // cout<<"vector "<<finalXYZ[0]<<endl;
-  //cout<<"tranpose"<<finalXYZ[0].inverse()<<endl;
   
 }
 
