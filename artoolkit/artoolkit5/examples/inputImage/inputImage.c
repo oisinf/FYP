@@ -4,7 +4,7 @@
 #  define snprintf _snprintf
 #  define _USE_MATH_DEFINES
 #endif
-#include <stdlib.h>					// malloc(), free()
+#include <stdlib.h>					
 #include <math.h>
 #ifdef __APPLE__
 #  include <GLUT/glut.h>
@@ -20,57 +20,58 @@
 #include <iostream>
 #include <fstream>
 #include <../include/reader/RawLogReader.h>
+
+#include <opencv/cv.h>
 //using namespace std; 
-
-
-//test git upload
-
-// ============================================================================
-//	Global variables
-// ============================================================================
 
 // Marker detection.
 static ARHandle		*gARHandle = new ARHandle();
 static ARPattHandle	*gARPattHandle = NULL;
 static long		 gCallCountMarkerDetect = 0;
 
- ARParam*		 cparam = new ARParam();
+ARParam*		 cparam = new ARParam();
 
 
 // Transformation matrix retrieval.
 static AR3DHandle	*gAR3DHandle = NULL;
-static ARdouble		gPatt_width     = 80.0;	// Per-marker, but we are using only 1 marker.
-static ARdouble		gPatt_trans[3][4];		// Per-marker, but we are using only 1 marker.
-static int	       	gPatt_found = FALSE;	// Per-marker, but we are using only 1 marker.
-static int     		gPatt_id;				// Per-marker, but we are using only 1 marker.
+static ARdouble		gPatt_width     = 200.0;        
+static ARdouble		gPatt_trans[3][4];	        
+static int	       	gPatt_found = FALSE; 
 
-// Drawing.
-static int gWindowW;
-static int gWindowH;
 static ARParamLT *gCparamLT = NULL;
 static ARGL_CONTEXT_SETTINGS_REF gArglSettings = NULL;
-static int gShowHelp = 1;
-static int gShowMode = 1;
-static int gDrawRotate = FALSE;
-static float gDrawRotateAngle = 0;			// For use in drawing.
+
+FILE * fp; 
 
 static int setupParams()
 {
+  //Pixel size
   int		  xsize=640, ysize=480;
+  //Pixel format
   AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
-  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/calib2.dat";
+  //File path for camera parameters
+  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/5X7calib1.dat";
 
+  //Clear AR param so can load new values into it
   if ((arParamClear(cparam, xsize, ysize, AR_DIST_FUNCTION_VERSION_DEFAULT))<0){
     ARLOGi("new param not happening");
     return(false);
   }
-  
-  if ((arParamLoad(camPar, 1, cparam))<0){
-     ARLOGi("param load not happenening");
+
+  //Load camera params into ar param struct
+  if(arParamLoad(camPar, 1, cparam)<0){
+     ARLOGw("param load not happenening");
+     arParamClearWithFOVy(cparam, xsize, ysize, M_PI_4);
+     ARLOGw("using default camera parameters");
     return(false);
   }
   
-  
+  if (cparam->xsize != xsize || cparam->ysize != ysize) {
+    ARLOGw("*** Camera Parameter resized from %d, %d. ***\n", cparam->xsize, cparam->ysize);
+    arParamChangeSize(cparam, xsize, ysize, cparam);
+  }
+
+  //Intialize param lookup table from camera parameters in ar param struct, 
   if ((gCparamLT = arParamLTCreate(cparam, AR_PARAM_LT_DEFAULT_OFFSET)) == NULL) {
     ARLOGe("setupCamera(): Error: arParamLTCreate.\n");
     return (FALSE);
@@ -80,38 +81,46 @@ static int setupParams()
     ARLOGe("Error: arCreateHandle.\n");
     exit(0);
   }
- if( arSetPixelFormat(gARHandle, pixFormat) < 0 ) {
-        ARLOGe("Error: arSetPixelFormat.\n");
-        exit(0);
-    }
- if( (gAR3DHandle=ar3DCreateHandle(cparam)) == NULL ) {
-        ARLOGe("Error: ar3DCreateHandle.\n");
-        exit(0);
-    }
-
+  if( arSetPixelFormat(gARHandle, pixFormat) < 0 ) {
+    ARLOGe("Error: arSetPixelFormat.\n");
+    exit(0);
+  }
+  if( (gAR3DHandle=ar3DCreateHandle(cparam)) == NULL ) {
+    ARLOGe("Error: ar3DCreateHandle.\n");
+    exit(0);
+  }
+  
   arParamDisp(cparam);
   return (TRUE);
 }
 
-//set up maker r func
-static int setupMarker(const char *patt_name, int *patt_id, ARHandle *arhandle, ARPattHandle **pattHandle_p)
+//set up marker func
+static int setupMarker(const char **patterns, int *pattIDs , ARHandle *arhandle, ARPattHandle **pattHandle_p, const int numMarkers )
 {	
+  const int size = 16;
   
-  if ((*pattHandle_p = arPattCreateHandle()) == NULL) {
+  if ((*pattHandle_p = arPattCreateHandle2(size, numMarkers)) == NULL) {
     ARLOGe("setupMarker(): Error: arPattCreateHandle.\n");
     return (FALSE);
   }
-  
-  // Loading only 1 pattern in this example.
-  if ((*patt_id = arPattLoad(*pattHandle_p, patt_name)) < 0) {
-    ARLOGe("setupMarker(): Error loading pattern file %s.\n", patt_name);
-    arPattDeleteHandle(*pattHandle_p);
-    return (FALSE);
-  }
-  //cout<patt_id;
-  arPattAttach(arhandle, *pattHandle_p);
-  ARLOGi("setupMarker \n");
-  
+
+  for (int i = 0;  i < numMarkers ; i++)
+    {
+      std::cout<<"Pattern file path "<<i<<"  "<<patterns[i]<<"\n";
+
+      if ((pattIDs[i]= arPattLoad(*pattHandle_p, patterns[i])) < 0) {
+	
+	ARLOGe("setupMarker(): Error loading pattern file %s.\n");
+	return (FALSE);
+      }
+      std::cout<<"pattern id: "<<pattIDs[i]<<"\n";
+  //std vector of arhandles, attach patt handle
+      arPattAttach(arhandle, *pattHandle_p);
+      ARLOGi("setupMarker \n");
+
+ 
+    }
+
   
   return (TRUE);
 }
@@ -131,79 +140,96 @@ static void cleanup(void)
 
 }
 
-int detectImage(AR2VideoBufferT *image)
+int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 {
   ARdouble err;
   ARMarkerInfo   *markerInfo;
-  int j, k;
+  int j, k, i;
   
   gCallCountMarkerDetect++;
+  
   if (arDetectMarker(gARHandle, image) < 0) {
     ARLOGi("No marker");
-    exit(0);
+    exit(-1);
   }
   markerInfo = arGetMarker(gARHandle);
-  k = -1;
-  for (j = 0; j < gARHandle->marker_num; j++) {
-    std::cout<<"\n"<<gPatt_id<<" patt id \n";
-    std::cout<<gARHandle->markerInfo[j].id<<" info id \n";
-    std::cout<<gARHandle->markerInfo[j].cf<<" info cf \n";
-    
-    if (markerInfo[j].id == gPatt_id) {
-      if (k == -1) {k = j; /*First marker detected. */
-	ARLOGi("marker detected");
-      }
-      else if (markerInfo[j].cf > markerInfo[k].cf) k = j; // Higher confidence marker detected.
-    }
-  }
   
-  if (k != -1) {
-    // Get the transformation between the marker and the real camera into gPatt_trans.
-    err = arGetTransMatSquare(gAR3DHandle, &(gARHandle->markerInfo[k]), gPatt_width, gPatt_trans);
-        ARLOGi("marker detected");
+  for (i = 0; i<gARHandle->marker_num; i++)
+    {
+      k = -1;
+      //Increment through marker num on handle, multiple patterns attached with createPattHandle2
+      for (j = 0; j < gARHandle->marker_num; j++) {	
+	if (markerInfo[j].id == pattIDs[i]) {
+	  if (k == -1) {
+	    if (markerInfo[j].cf >=0.7){
+	      k = j;
+	      std::cout<<"pattern id "<<markerInfo[j].id<<" detected in frame "<<currentFrame<<"\n";
 
-    //printf("%s %f", " ", gARHandle->markerInfo[k].cf);
-    //unsure what err is. 
-    printf ("%s %f"," ",  err);
-    int i ,j; 
-    
-    FILE * fp; 
-    
-    fp=fopen("/home/oisin/libs/TestLogs/gPatt_trans.txt", "w");
-    for (i=0; i<3; i++){
-      for (j=0; j<4; j++){
-	fprintf(fp, "%f %s", gPatt_trans[i][j]," ");
+	    }/*First marker detected. */   
+	  }
+	}
       }
-      fprintf(fp, "\n");}
-    fclose(fp);
-    
-    gPatt_found = TRUE;
-  } else {
-    gPatt_found = FALSE;
-  }  
+      if (k != -1) {
+	// Get the transformation between the marker and the real camera into gPatt_trans.
+	err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
+	
+	fprintf(fp, "%s %i \n", "Frame",currentFrame );
+	fprintf(fp, "%s %i \n", "Patt" , pattIDs[i] );
+	int i ,j;  
+	for (i=0; i<3; i++){
+	  fprintf(fp, "%s%i ", "r",i ); 
+	  for (j=0; j<4; j++){
+	    fprintf(fp, "%f ", gPatt_trans[i][j]);
+	  }
+	  fprintf(fp, "\n");
+	}
+	fprintf(fp, "\n");	
+	gPatt_found = TRUE;
+      }
+      else {
+	gPatt_found = FALSE;
+      }
+    }
 }
 
 int main(void)
 {
-  ARLOGi("main");
-  char    patt_name[]  = "Data/hiro.patt";
-  //char    patt_name[]  = "Data/kanji3.patt";
+  
+  const char* patterns [] = { "Data/kanji.patt", "Data/hiro.patt"};
+  
+  const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
+  int pattIDs[numMarkers];
+  
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
-
+  int currentFrame;
   //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
   //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
   setupParams();
-  
- 
-  ///Load two markers 
-  // Load marker(s).
-  if (!setupMarker(patt_name, &gPatt_id, gARHandle, &gARPattHandle)) {
+  if (!setupMarker(patterns, pattIDs, gARHandle, &gARPattHandle, numMarkers)) {
     ARLOGe("main(): Unable to set up AR marker.\n");
     cleanup();
     exit(-1);
   }
+
+  /*
+  ARMarkerInfo *testMarkerInfo;
+  testMarkerInfo = arGetMarker(gARHandle);
+  std::cout<<gARHandle->marker_num;
+  std::cout<<gARHandle->markerInfo[0].id;
+  // std::cout<<testMarkerInfo[1].id;
+
+	
+
+  /*
+  for (int j=0; j< gARHandle->marker_num; j++)
+    {
+      ARLOGi("this is working?");
+      std::cout<<gARHandle->marker_num;
+      std::cout<<testMarkerInfo[j].id;
+    }
+  /*
   std::cout<<"start \n";
   std::cout<< gARHandle->arDebug<<"\n";
   std::cout<< gARHandle->arPixelFormat<<"\n";
@@ -216,35 +242,40 @@ int main(void)
   std::cout<< gARHandle->marker_num<<"\n";
   std::cout<< gARHandle->markerInfo<<"\n";
   std::cout<< gARHandle->pattHandle<<"\n";
-
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/hiroTest.klg";
+  */
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiHiro75cm.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
+  image->buff = new ARUint8[640*480];
+  
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/75cm.txt", "w");
+
+  fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
+	
   
   while (logreader->grabNext())
     {
-      
-      //printf("%d %s", logreader->currentFrame, " ");
-      
       im = logreader->decompressedImage;
+            
+      cv::Mat cvimage(480, 640, CV_8UC3, im);
+      cv::Mat gimage;
+      cv::cvtColor(cvimage, gimage, CV_BGR2GRAY);
+      /*
+      cv::imshow("Test", gimage);
+      cv::waitKey(0);
+      */
       image->buff = im ;
       image->bufPlanes = NULL;
       image->bufPlaneCount= 0; 
-      image->buffLuma = image->buff; 
+      image->buffLuma = gimage.data;
       image->fillFlag = 1; 
-    
-      detectImage(image);
-
-      /*
-      ofstream myfile; 
-      const char *path = "/home/oisin/libs/TestLogs/Poses/Frames.txt";
-      myfile.open (path);
-      myfile <<logreader->currentFrame<< "\n";
-      myfile.close();
-      */
+      currentFrame = logreader->currentFrame;
+      detectImage(image, currentFrame, pattIDs);
     }
+
   
+  fclose(fp);
   ARLOGi("main end");
   return (0);
 }
