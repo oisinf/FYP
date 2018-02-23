@@ -1,8 +1,16 @@
-/**This program is to parse text files containing 
- *frames and poses. 
+/**
+ *markerPosition parses text files containing poses outputted from Elastic Fusion and AR Tag poses from inputImage. 
+ *It the computes the pose of the markers relative to Elastic Fusions coordinate system and outputs a ply file to visualize the 4 vertexs of 
+ *of each tag. 
+ *Finally it outputs a .dat multimarker configuration file for use with ARToolkit multimarker augemented reality. 
+ *
+ *Author Oisin Feely 2018
  */
 
-//Includes
+
+/**
+ *Includes
+*/
 #include <iostream>
 #include <string.h>
 #include <fstream>
@@ -17,11 +25,16 @@
 #include <fstream>
 using namespace std; 
 
+/**
+ *Typedefs for convenience
+ *XYZ to hold xyz positions of each marker for averaging
+ */
 typedef Eigen::Matrix<double, 4, 4> Pose4X4;
-typedef Eigen::Matrix<double, 4, 1> XYZ; 
-//Variables
-//Ensure path names correct as no validitation as of yet
-//AR poses and frames (pf)
+typedef Eigen::Matrix<double, 4, 1> XYZ;
+
+/**
+ *Constants for file paths, add option to input files in refactoring. 
+ */
 const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/75cm.txt";
 const char *pfEF = "../TestLogs/EFFrames&Poses/75Test.txt";
 
@@ -45,16 +58,18 @@ vector<efInfo> efPoses;
 //vector to hold tag points relative to ef
 vector<Eigen::Matrix4d> tagPoints; 
 
-vector<Eigen::Quaternion<double> > globalCoordsQuat;
-vector<Pose4X4> globalMarkerCoords;
 //Quaterions to hold global coords
+vector<Eigen::Quaternion<double> > globalCoordsQuat;
 
+//final global coordinates, i.e coordinates of tags in ef coordinate system
+vector<Pose4X4> globalMarkerCoords;
+
+//number of tags
 int numPatts; 
 
+//Parse columns from text, flag is what column i.e 1,2,3
 void parseCols(string row, Pose4X4& pose, int flag)
 {
-  double z = 0.0;
-  double one = 1.0;
   istringstream r(row);
   string buff;
   vector<string>col;
@@ -82,6 +97,7 @@ void parseCols(string row, Pose4X4& pose, int flag)
   
 }
 
+//Parse text from text files, input stream
 int parseText(stringstream& stream, int flag)
 {
   //variables to hold parsed data temporarily

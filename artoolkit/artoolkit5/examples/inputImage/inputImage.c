@@ -249,7 +249,7 @@ int main(void)
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
   
-  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test.txt", "w");
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/75cm.txt", "w");
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	

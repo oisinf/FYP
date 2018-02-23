@@ -203,7 +203,6 @@ int main(void)
   AR2VideoBufferT *image = new AR2VideoBufferT();
   ARUint8* im;
   int currentFrame;
-  
   //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
   //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
 
@@ -252,6 +251,8 @@ int main(void)
   
   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test.txt", "w");
 
+  fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
+	
   
   while (logreader->grabNext())
     {
