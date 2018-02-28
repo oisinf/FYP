@@ -121,6 +121,9 @@ static int setupMarker(const char **patterns, int *pattIDs , ARHandle *arhandle,
  
     }
 
+  //4 patts in patt handle, patt handle is attached to arHandle
+  std::cout<<gARPattHandle->patt_num<<"\n";
+  std::cout<<gARPattHandle->patt_num_max<<"\n";
   
   return (TRUE);
 }
@@ -165,7 +168,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 	      k = j;
 	      std::cout<<"pattern id "<<markerInfo[j].id<<" detected in frame "<<currentFrame<<"\n";
 
-	    }/*First marker detected. */   
+	    }   
 	  }
 	}
       }
@@ -194,8 +197,8 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 
 int main(void)
 {
-  
-  const char* patterns [] = { "Data/kanji.patt", "Data/hiro.patt"};
+  //Does not detect more than 3 patterns, changing the order  
+  const char* patterns [] = {"Data/sample1trained.patt", "Data/sample2trained.patt",   "Data/kanji.patt", "Data/hiro.patt"};
   
   const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
   int pattIDs[numMarkers];
@@ -213,43 +216,15 @@ int main(void)
     exit(-1);
   }
 
-  /*
-  ARMarkerInfo *testMarkerInfo;
-  testMarkerInfo = arGetMarker(gARHandle);
-  std::cout<<gARHandle->marker_num;
-  std::cout<<gARHandle->markerInfo[0].id;
-  // std::cout<<testMarkerInfo[1].id;
-
-	
-
-  /*
-  for (int j=0; j< gARHandle->marker_num; j++)
-    {
-      ARLOGi("this is working?");
-      std::cout<<gARHandle->marker_num;
-      std::cout<<testMarkerInfo[j].id;
-    }
-  /*
-  std::cout<<"start \n";
-  std::cout<< gARHandle->arDebug<<"\n";
-  std::cout<< gARHandle->arPixelFormat<<"\n";
-  std::cout<< gARHandle->arPixelSize<<"\n";
-  std::cout<< gARHandle->arLabelingMode<<"\n";
-  std::cout<< gARHandle->arLabelingThresh<<"\n";
-  std::cout<< gARHandle->arImageProcMode<<"\n";
-  std::cout<< gARHandle->arPatternDetectionMode<<"\n";
-  std::cout<< gARHandle->arMarkerExtractionMode<<"\n";
-  std::cout<< gARHandle->marker_num<<"\n";
-  std::cout<< gARHandle->markerInfo<<"\n";
-  std::cout<< gARHandle->pattHandle<<"\n";
-  */
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiHiro75cm.klg";
+  //Logfile to read
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/2tags1.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
   image->buff = new ARUint8[640*480];
-  
-  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/test.txt", "w");
+
+  //text file to write to
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/4tagsTest.txt", "w");
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	
@@ -273,8 +248,6 @@ int main(void)
       currentFrame = logreader->currentFrame;
       detectImage(image, currentFrame, pattIDs);
     }
-
-  
   fclose(fp);
   ARLOGi("main end");
   return (0);
