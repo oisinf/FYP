@@ -124,6 +124,7 @@ static int setupMarker(const char **patterns, int *pattIDs , ARHandle *arhandle,
   //4 patts in patt handle, patt handle is attached to arHandle
   std::cout<<gARPattHandle->patt_num<<"\n";
   std::cout<<gARPattHandle->patt_num_max<<"\n";
+  std::cout<<gARHandle->marker_num<<"\n";
   
   return (TRUE);
 }
@@ -143,11 +144,11 @@ static void cleanup(void)
 
 }
 
-int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
+int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs, int numMarkers)
 {
   ARdouble err;
   ARMarkerInfo   *markerInfo;
-  int j, k, i, markerCount;
+  int j, k, i,markerCount;
     
   if (arDetectMarker(gARHandle, image) < 0) {
     ARLOGi("No marker");
@@ -155,8 +156,10 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
   }
   markerInfo = arGetMarker(gARHandle);
   markerCount = arGetMarkerNum(gARHandle);
-  //std::cout<<markerCount<<"\n";
-  for (i = 0; i<gARHandle->marker_num; i++)
+  //std::cout<<markerCount<<" markers detected in frame"<<currentFrame<<"\n";
+  //std::cout<<"handle"<<gARHandle->marker_num<<"\n";
+  //std::cout<<"garhandle marker num"<<gARHandle->marker_num<<"\n";
+  for (i = 0; i<numMarkers; i++)
     {
       k = -1;
       //Increment through marker num on handle, multiple patterns attached with createPattHandle2
@@ -169,36 +172,29 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs)
 	      k = j;
 	      std::cout<<"pattern id "<<markerInfo[j].id<<" detected in frame "<<currentFrame<<"\n";
 
+	      err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
+	      
+	      fprintf(fp, "%s %i \n", "Frame",currentFrame );
+	      fprintf(fp, "%s %i \n", "Patt" , pattIDs[i] );
+	      int l ,m;  
+	      for (l=0; l<3; l++){
+		fprintf(fp, "%s%i ", "r",i ); 
+		for (m=0; m<4; m++){
+		  fprintf(fp, "%f ", gPatt_trans[l][m]);
+		}
+		fprintf(fp, "\n");
+	      }
+	      fprintf(fp, "\n");
 	    }   
-	   }
-	}
-      }
-      if (k != -1) {
-	// Get the transformation between the marker and the real camera into gPatt_trans.
-	err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[k]), gPatt_width, gPatt_trans);
-	
-	fprintf(fp, "%s %i \n", "Frame",currentFrame );
-	fprintf(fp, "%s %i \n", "Patt" , pattIDs[i] );
-	int l ,m;  
-	for (l=0; l<3; l++){
-	  fprintf(fp, "%s%i ", "r",i ); 
-	  for (m=0; m<4; m++){
-	    fprintf(fp, "%f ", gPatt_trans[l][m]);
 	  }
-	  fprintf(fp, "\n");
 	}
-	fprintf(fp, "\n");	
-	gPatt_found = TRUE;
       }
-      else {
-	gPatt_found = FALSE;
-      }
+     
     }
 }
 
 int main(void)
 {
-  //Does not detect more than 3 patterns, changing the order  
   const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt","Data/sample1.patt","Data/sample2.patt"};
   
   const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
@@ -247,7 +243,7 @@ int main(void)
       image->buffLuma = gimage.data;
       image->fillFlag = 1; 
       currentFrame = logreader->currentFrame;
-      detectImage(image, currentFrame, pattIDs);
+      detectImage(image, currentFrame, pattIDs, numMarkers);
     }
   fclose(fp);
   ARLOGi("main end");
