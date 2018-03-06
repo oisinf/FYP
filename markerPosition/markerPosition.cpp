@@ -272,7 +272,9 @@ void outputPLY(){
 
   //output stream 
   ofstream fp;
-
+  //DIDN'T MULTIPLY BY INVERSE
+  //**********************************************************
+  
   fp.open("/home/oisin/libs/markerPosition/visualize.ply");
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
