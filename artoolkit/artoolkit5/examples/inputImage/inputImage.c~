@@ -195,7 +195,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs, int numM
 
 int main(void)
 {
-  const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt","Data/sample1.patt","Data/sample2.patt"};
+  const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt"/*,"Data/sample1.patt","Data/sample2.patt"*/};
   
   const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
   int pattIDs[numMarkers];
@@ -214,7 +214,7 @@ int main(void)
   }
 
   //Logfile to read
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/4tags1.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiHiro75cm.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
@@ -222,7 +222,7 @@ int main(void)
 
   
   //text file to write to
-   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/4tags1.txt", "w");
+   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/75kanjiHiro2.txt", "w");
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	

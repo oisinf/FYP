@@ -35,8 +35,8 @@ typedef Eigen::Matrix<double, 4, 1> XYZ;
 /**
  *Constants for file paths, add option to input files in refactoring. 
  */
-const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/75cm.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/75Test.txt";
+const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/newData4tags5Correct.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/newData4tags5.txt";
 
 struct arInfo{
   int frame;
@@ -128,6 +128,9 @@ int parseText(stringstream& stream, int flag)
 	  dataAR.pattID = pattID;
 	  dataAR.pose = temp;
 	  arPoses.push_back(dataAR);
+	  cout<<dataAR.frame<<endl;
+	  cout<<dataAR.pattID<<endl;
+	  cout<<dataAR.pose<<endl;
 	}
 	else {
 	  dataEF.frame = currentFrame;
@@ -161,6 +164,9 @@ Eigen::Quaternion<double> slerpQuaternion(){
 
   Eigen::Quaternion<double> temp; 
   Eigen::Quaternion<double> total = globalCoordsQuat[0];
+
+    cout<<"size of quaternion vector "<<globalCoordsQuat.size()<<endl;
+
   
   for (int i=1; i< globalCoordsQuat.size(); i++){
    
@@ -175,7 +181,7 @@ Eigen::Quaternion<double> slerpQuaternion(){
 
 void getMatrix(int currentPatt){
 
-   cout<<currentPatt<<endl;
+  cout<<"current pattern matrix being calcuated "<<currentPatt<<endl;
    int avg = 0;
    XYZ avgTemp;
    avgTemp<<0,0,0,0;
@@ -210,7 +216,7 @@ void getMatrix(int currentPatt){
    //possibly 1,0,0,0, unsure what to instansiate quaternions as ***new note, identity = 1,0,0,0
    Eigen::Quaternion<double> total(1,0,0,0);
    Eigen::Quaternion<double> local(1,0,0,0);
-   
+
   for (int i = 0; i<arPoses.size();i++){
     if (arPoses[i].pattID == currentPatt){
       
@@ -228,7 +234,8 @@ void getMatrix(int currentPatt){
 
 	  //4 corners of the tag, get avg
 	  //EFPoints = temp * TagPoints;
-	  EFPoints = EFPoints+(temp*TagPoints);
+	  //line should be at bottom
+	  //EFPoints = EFPoints+(temp*TagPoints);
 	  
 	  //split temp into quaternion+xyz
 	  
@@ -249,19 +256,22 @@ void getMatrix(int currentPatt){
   //iterate through quaternion vector, slerp, then recompose into 
   total = slerpQuaternion();
   avgTemp = avgTemp/avg;
-  cout<<EFPoints<<endl;
-  EFPoints = EFPoints/avg;
-  cout<<EFPoints<<endl;
+  
+  //EFPoints = EFPoints/avg;
+  
   finalGlobalCoord.block<3,3>(0,0) = total.toRotationMatrix();
   finalGlobalCoord.col(3) = avgTemp;
 
-  //cout<<finalGlobalCoord<<endl; 
-  //cout<<EFPoints<<endl;
+  EFPoints = finalGlobalCoord*TagPoints;
   
   tagPoints.push_back(EFPoints);
-  //cout<<"average"<<avgTemp<<endl;
-  //Average x,y,z coordinates
+ 
   globalMarkerCoords.push_back(finalGlobalCoord);
+  //cout<<"estimated pose \n"<<finalGlobalCoord<<endl;
+
+  //cout<<"estimate tag vertices \n"<<EFPoints<<endl;
+
+  globalCoordsQuat.clear(); 
 }
 
 void getMultiMarkerConfig(Pose4X4 originP){
@@ -275,19 +285,17 @@ void outputPLY(){
   //DIDN'T MULTIPLY BY INVERSE
   //**********************************************************
   
-  fp.open("/home/oisin/libs/markerPosition/visualize2.ply");
+  fp.open("/home/oisin/libs/markerPosition/visualizeNewDataTest5.ply");
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
   for(int i=0;i<tagPoints.size(); i++){
 
     Eigen::Matrix<double, 3,4> tagPts = (tagPoints[i].block<3,4>(0,0))/1000;
-    cout<<tagPts<<endl;
 
     for(int j=0; j<4;j++){
       //need to divide by 100 as currently in mms
       Eigen::RowVector3d flatten = tagPts.col(j);
       
-      cout<<flatten<<endl;
       fp<<flatten<<endl;
     }
   }
@@ -342,31 +350,15 @@ int main ()
   stringstream efPoseStream(efString);
   posesEF.close();
 
-  parseText(arPoseStream,1);
+  parseText(arPoseStream,2);
   parseText(efPoseStream,-1);
 
   for (int i=0; i<numPatts; i++){
     getMatrix(i);
   }
-
-  //getMultiMarkerConfig(globalMarkerCoords[0]);
-  /*
-  for(int i=0;i<globalMarkerCoords.size(); i++){
-    visualizeMarkers(globalMarkerCoords[i]);
-  }
-  */
   outputPLY();
-  /*
-  double xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
-  double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);
-  double zs= globalMarkerCoords[0](2,3)-globalMarkerCoords[1](2,3);
-
-  cout<<"distance mm:"<<sqrt((pow(xs,2))+(pow(ys,2))+(pow(zs, 2)))<<"\n";
-  */
-  //test result differences 
-  //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
-
-  
+  cout<<"Size ar pose vector "<<arPoses.size()<<endl;
+  cout<<"Size of ef pose vector"<<efPoses.size()<<endl;
 }
 
 
