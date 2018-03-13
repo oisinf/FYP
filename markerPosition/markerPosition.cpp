@@ -128,9 +128,6 @@ int parseText(stringstream& stream, int flag)
 	  dataAR.pattID = pattID;
 	  dataAR.pose = temp;
 	  arPoses.push_back(dataAR);
-	  cout<<dataAR.frame<<endl;
-	  cout<<dataAR.pattID<<endl;
-	  cout<<dataAR.pose<<endl;
 	}
 	else {
 	  dataEF.frame = currentFrame;
@@ -217,12 +214,12 @@ void getMatrix(int currentPatt){
    Eigen::Quaternion<double> total(1,0,0,0);
    Eigen::Quaternion<double> local(1,0,0,0);
 
-  for (int i = 0; i<arPoses.size();i++){
+   for (int i = 0; i<arPoses.size(); i++){
     if (arPoses[i].pattID == currentPatt){
-      
       for(int j = 0; j<efPoses.size(); j++){
+	//
 	if(arPoses[i].frame == efPoses[j].frame){
-
+	 
 	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
 	  temp = arPoses[i].pose*efPoses[j].pose;
 
@@ -255,6 +252,8 @@ void getMatrix(int currentPatt){
 
   //iterate through quaternion vector, slerp, then recompose into 
   total = slerpQuaternion();
+
+  cout<<"avg frames current pattern spotted in  "<<avg<<endl;
   avgTemp = avgTemp/avg;
   
   //EFPoints = EFPoints/avg;
@@ -269,7 +268,7 @@ void getMatrix(int currentPatt){
   globalMarkerCoords.push_back(finalGlobalCoord);
   //cout<<"estimated pose \n"<<finalGlobalCoord<<endl;
 
-  //cout<<"estimate tag vertices \n"<<EFPoints<<endl;
+  cout<<"estimate tag vertices \n"<<EFPoints<<endl;
 
   globalCoordsQuat.clear(); 
 }
@@ -356,6 +355,13 @@ int main ()
   for (int i=0; i<numPatts; i++){
     getMatrix(i);
   }
+  int numPatts = 0; 
+  for(int i=0; i<arPoses.size();i++){
+    if (arPoses[i].pattID == 1){
+      numPatts++;
+    }
+  }
+  cout<<"number of patt 0s "<<numPatts<<endl;
   outputPLY();
   cout<<"Size ar pose vector "<<arPoses.size()<<endl;
   cout<<"Size of ef pose vector"<<efPoses.size()<<endl;
