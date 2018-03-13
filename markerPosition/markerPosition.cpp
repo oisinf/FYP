@@ -275,7 +275,7 @@ void outputPLY(){
   //DIDN'T MULTIPLY BY INVERSE
   //**********************************************************
   
-  fp.open("/home/oisin/libs/markerPosition/visualize.ply");
+  fp.open("/home/oisin/libs/markerPosition/visualize2.ply");
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
   for(int i=0;i<tagPoints.size(); i++){
@@ -356,13 +356,13 @@ int main ()
   }
   */
   outputPLY();
-  
+  /*
   double xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
   double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);
   double zs= globalMarkerCoords[0](2,3)-globalMarkerCoords[1](2,3);
 
   cout<<"distance mm:"<<sqrt((pow(xs,2))+(pow(ys,2))+(pow(zs, 2)))<<"\n";
-  
+  */
   //test result differences 
   //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
 
