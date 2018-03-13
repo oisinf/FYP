@@ -178,7 +178,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs, int numM
 	      fprintf(fp, "%s %i \n", "Patt" , pattIDs[i] );
 	      int l ,m;  
 	      for (l=0; l<3; l++){
-		fprintf(fp, "%s%i ", "r",i ); 
+		fprintf(fp, "%s%i ", "r",l ); 
 		for (m=0; m<4; m++){
 		  fprintf(fp, "%f ", gPatt_trans[l][m]);
 		}
@@ -195,7 +195,7 @@ int detectImage(AR2VideoBufferT *image, int currentFrame, int *pattIDs, int numM
 
 int main(void)
 {
-  const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt"/*,"Data/sample1.patt","Data/sample2.patt"*/};
+  const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt","Data/sample1.patt","Data/sample2.patt"};
   
   const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
   int pattIDs[numMarkers];
@@ -214,7 +214,7 @@ int main(void)
   }
 
   //Logfile to read
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/kanjiHiro75cm.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/newData4Tags5.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
@@ -222,7 +222,7 @@ int main(void)
 
   
   //text file to write to
-   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/75kanjiHiro2.txt", "w");
+   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/newData4tags5Correct.txt", "w");
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	
