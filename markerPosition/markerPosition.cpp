@@ -35,8 +35,8 @@ typedef Eigen::Matrix<double, 4, 1> XYZ;
 /**
  *Constants for file paths, add option to input files in refactoring. 
  */
-const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/newData4tags5Correct.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/newData4tags5.txt";
+const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/newData4tags4Correct.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/newData4tags4.txt";
 
 struct arInfo{
   int frame;
@@ -131,6 +131,9 @@ int parseText(stringstream& stream, int flag)
 	}
 	else {
 	  dataEF.frame = currentFrame;
+	  //need to scale pose as current is in meters rather than mms as ar poses are.
+	  temp.block<3,1>(0,3) = temp.block<3,1>(0,3)*1000;
+	  //cout<<"ef pose in mms "<<currentFrame<<"\n"<<temp<<endl;
 	  dataEF.pose = temp;
 	  efPoses.push_back(dataEF);
 	}
@@ -169,7 +172,7 @@ Eigen::Quaternion<double> slerpQuaternion(){
    
     temp = globalCoordsQuat[i];
     //unsure what 1 should be, defines the scalar (time?) difference between quaternions
-    total = total.slerp(1,temp);
+    total = total.slerp(0.5,temp);
     
   }
   return total; 
@@ -221,7 +224,7 @@ void getMatrix(int currentPatt){
 	if(arPoses[i].frame == efPoses[j].frame){
 	 
 	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
-	  temp = arPoses[i].pose*efPoses[j].pose;
+	  temp =efPoses[j].pose* arPoses[i].pose;
 
 	  //for visualization, get 4 points of edge of markers
 	  //Eigen::Vector4d P00(0,0,0,1),P10(1,0,0,1);
@@ -284,11 +287,12 @@ void outputPLY(){
   //DIDN'T MULTIPLY BY INVERSE
   //**********************************************************
   
-  fp.open("/home/oisin/libs/markerPosition/visualizeNewDataTest5.ply");
+  fp.open("/home/oisin/libs/markerPosition/Test/4tags4.ply");
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
   for(int i=0;i<tagPoints.size(); i++){
 
+    //divide by 100 as current pose in mms and ef in meters, 
     Eigen::Matrix<double, 3,4> tagPts = (tagPoints[i].block<3,4>(0,0))/1000;
 
     for(int j=0; j<4;j++){
