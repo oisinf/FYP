@@ -222,11 +222,15 @@ int main(void)
 
   
   //text file to write to
-   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Test/Log10.txt", "w");
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Test/Log10.txt", "w");
+
+  //print out patters
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	
-  
+    for(int i = 0; i <numMarkers; i++){
+    fprintf(fp, "%s %s \n", "PN", patterns[i]);
+  }
   while (logreader->grabNext())
     {
       im = logreader->decompressedImage;
