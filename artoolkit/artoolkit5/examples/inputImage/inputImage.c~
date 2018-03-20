@@ -214,7 +214,7 @@ int main(void)
   }
 
   //Logfile to read
-  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/newData4Tags5.klg";
+  std::string logfile = "/home/oisin/libs/TestLogs/Testlogs/Test/2018-03-15.10.klg";
   RawLogReader * logreader; 
   Resolution::get(640, 480);
   logreader = new RawLogReader(logfile);
@@ -222,7 +222,7 @@ int main(void)
 
   
   //text file to write to
-   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/newData4tags5Correct.txt", "w");
+   fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Test/Log10.txt", "w");
 
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
 	

@@ -65,7 +65,9 @@ vector<Eigen::Quaternion<double> > globalCoordsQuat;
 vector<Pose4X4> globalMarkerCoords;
 
 //number of tags
-int numPatts; 
+int numPatts;
+
+vector<string>patternNames;
 
 //Parse columns from text, flag is what column i.e 1,2,3
 void parseCols(string row, Pose4X4& pose, int flag)
@@ -103,7 +105,6 @@ int parseText(stringstream& stream, int flag)
   //variables to hold parsed data temporarily
   int currentFrame, pattID;
   string r1,r2,r3,r4, line;
-  int index = 0;
   arInfo dataAR;
   efInfo dataEF; 
   Pose4X4 temp;
@@ -111,15 +112,19 @@ int parseText(stringstream& stream, int flag)
   temp(3,1) = 0.0;
   temp(3,2) = 0.0;
   temp(3,3) = 1.0;
-
+  string tempName ="";  
   while(!stream.eof())
     {
       getline(stream, line); 
-
-      if(line.find("NumPatterns")!=string::npos){
-	istringstream(line.substr(12))>>numPatts;	
-      }
       
+      if(line.find("NumPatterns")!=string::npos){
+	istringstream(line.substr(12))>>numPatts;
+      }
+
+      if(line.find("PN")!=string::npos){
+        tempName = istringstream(line.substr(3)).str();
+	patternNames.push_back(tempName);	
+      }
       //Parsed one frame and 
       if(line.empty()){
 	//Pass parsed values into either ar or ef struct depending on flag, add to vector
@@ -200,8 +205,8 @@ void getMatrix(int currentPatt){
 
    Eigen::Matrix4d TagPoints;
    TagPoints <<
-     0,10,10,0,
-     0,0,10,10,
+     0,100,100,0,
+     0,0,100,100,
      0,0,0,0,
      1,1,1,1;
 
@@ -276,18 +281,43 @@ void getMatrix(int currentPatt){
   globalCoordsQuat.clear(); 
 }
 
-void getMultiMarkerConfig(Pose4X4 originP){
-  
+void getMultiMarkerConfig(){
+  ofstream fp;
+
+   Pose4X4 temp;
+   temp<<
+     1, 0, 0, 0,
+     0, 1, 0, 0,
+     0, 0, 1, 0,
+     0, 0 ,0, 1;
+   
+  fp.open("/home/oisin/libs/TestLogs/MultimarkerConfigs/test1.dat");
+
+  fp<<numPatts<<endl<<endl;
+
+  fp<<patternNames[0]<<endl;
+  fp<<200.00<<endl;
+  fp<<temp.block<3,4>(0,0)<<endl<<endl;
+  cout<<globalMarkerCoords[0]<<endl;
+  cout<<globalMarkerCoords[0]*globalMarkerCoords[0].inverse()<<endl;
+
+  for(int i = 1; i<globalMarkerCoords.size(); i++){
+
+    temp =  globalMarkerCoords[0].inverse()*globalMarkerCoords[i];
+    fp<<patternNames[i]<<endl;
+    fp<<200.00<<endl;
+    fp<<temp.block<3,4>(0,0)<<endl<<endl;
+  }
+
+  fp.close();
 }
 
 void outputPLY(){
 
   //output stream 
   ofstream fp;
-  //DIDN'T MULTIPLY BY INVERSE
-  //**********************************************************
   
-  fp.open("/home/oisin/libs/markerPosition/Test/4tags4.ply");
+  fp.open("/home/oisin/libs/markerPosition/Test/4tags4Correctvertices.ply");
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
   for(int i=0;i<tagPoints.size(); i++){
@@ -298,7 +328,6 @@ void outputPLY(){
     for(int j=0; j<4;j++){
       //need to divide by 100 as currently in mms
       Eigen::RowVector3d flatten = tagPts.col(j);
-      
       fp<<flatten<<endl;
     }
   }
@@ -355,20 +384,14 @@ int main ()
 
   parseText(arPoseStream,2);
   parseText(efPoseStream,-1);
-
+  
   for (int i=0; i<numPatts; i++){
     getMatrix(i);
   }
-  int numPatts = 0; 
-  for(int i=0; i<arPoses.size();i++){
-    if (arPoses[i].pattID == 1){
-      numPatts++;
-    }
-  }
-  cout<<"number of patt 0s "<<numPatts<<endl;
+
   outputPLY();
-  cout<<"Size ar pose vector "<<arPoses.size()<<endl;
-  cout<<"Size of ef pose vector"<<efPoses.size()<<endl;
+  getMultiMarkerConfig();
+
 }
 
 
