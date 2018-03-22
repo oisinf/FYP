@@ -1,4 +1,8 @@
 NumPatterns 4 
+PN Data/hiro.patt 
+PN Data/kanji.patt 
+PN Data/sample1.patt 
+PN Data/sample2.patt 
 Frame 1 
 Patt 1 
 r0 0.997769 -0.041300 -0.052459 -63.214583 
