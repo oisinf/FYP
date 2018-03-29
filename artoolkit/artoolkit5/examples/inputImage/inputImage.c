@@ -243,7 +243,7 @@ int main(void)
   }
 
   //Logfile to read*****program must be recompiled if changing log or text output
-  string logfile = "/home/oisin/libs/TestLogs/Testlogs/Test/2018-03-15.10.klg";
+  string logfile = "/home/oisin/libs/TestLogs/Testlogs/Demos/2018-03-22.04.klg";
   //Declare logreader to read logs
   RawLogReader * logreader;
 
@@ -257,13 +257,13 @@ int main(void)
   image->buff = new ARUint8[640*480];
 
   //text file to write to
-  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Test/Log10.txt", "w");
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Demos/Log04.txt", "w");
 
   //Output number of patterns to text file for parsing in markerPosition
   fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
   //Output file paths for markers to text file for parsing in markerPosition 
   for(int i = 0; i <numMarkers; i++){
-    fprintf(fp, "%s %s \n", "PN", patterns[i]);
+    fprintf(fp, "%s %s\n", "PN", patterns[i]);
   }
 
   //While log reader has frames to process
