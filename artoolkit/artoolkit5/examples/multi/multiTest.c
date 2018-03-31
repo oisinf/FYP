@@ -70,9 +70,9 @@
 #include <AR/arMulti.h>
 #include <ARUtil/time.h>
 #include <unistd.h>
-#define                 CONFIG_NAME      "Data/multi/Log02.dat"
+//#define                 CONFIG_NAME      "Data/multi/Log02.dat"
 
-//#define CONFIG_NAME "Data/multi/marker.dat"
+#define CONFIG_NAME "Data/multi/marker.dat"
 
 ARHandle               *arHandle;
 AR3DHandle             *ar3DHandle;
