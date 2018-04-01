@@ -25,51 +25,61 @@
 #include <fstream>
 using namespace std; 
 
-/**
- *Typedefs for convenience
- *XYZ to hold xyz positions of each marker for averaging
- */
+/**Typdefs*/
+
+/**4x4 matrix to hold homogenous poses*/
 typedef Eigen::Matrix<double, 4, 4> Pose4X4;
+
+/**4x1 matrix to hold x,y,z,w for position averaging*/
 typedef Eigen::Matrix<double, 4, 1> XYZ;
 
 /**
- *Constants for file paths, add option to input files in refactoring. 
+ *Constants for file paths, must be recompiled if file path changed
  */
-const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/75cm.txt";
-const char *pfEF = "../TestLogs/EFFrames&Poses/75Test.txt";
+const char *pfAR = "../TestLogs/ARLogReaderFrames&Poses/Demos/Log04.txt";
+const char *pfEF = "../TestLogs/EFFrames&Poses/Demos/Log04.txt";
 
+/**Struct to hold frame, patt id and pose from marker detection output*/
 struct arInfo{
   int frame;
   int pattID;
   Pose4X4 pose;
 };
-
+/**Struct to hold frame frame and pose from elastic fusion output*/
 struct efInfo{
   int frame;
   Pose4X4 pose;
 };
 
-//Vector for ar poses, contains, frame, patt id, and ar poses
+/**Vector to hold parsed information from marker detection output*/
 vector<arInfo> arPoses;
 
-//Vector for ef poses, contains, frame and ef poses; 
+/**Vector to hold parsed information from EF output*/
 vector<efInfo> efPoses;
 
-//vector to hold tag points relative to ef
+/**Vector to hold calcuated marker vertices*/
 vector<Eigen::Matrix4d> tagPoints; 
 
-//Quaterions to hold global coords
+/**Vector to hold quaterions for SLERP*/
 vector<Eigen::Quaternion<double> > globalCoordsQuat;
 
-//final global coordinates, i.e coordinates of tags in ef coordinate system
+/**Vector to hold averaged marker poses*/
 vector<Pose4X4> globalMarkerCoords;
 
-//number of tags
-int numPatts; 
+/**number of markers*/
+int numPatts;
 
-//Parse columns from text, flag is what column i.e 1,2,3
+/**Vector for pattern names to output in multimarker config file*/
+vector<string>patternNames;
+
+/**Method to parse homogeneous coordinate columns from text file input
+ *@param row, line of text to be parsed
+ *@param pose, reference to the current pose that parsed data will be held in
+ *@param flag, current row being parsed
+ */
 void parseCols(string row, Pose4X4& pose, int flag)
 {
+  
   istringstream r(row);
   string buff;
   vector<string>col;
@@ -97,30 +107,38 @@ void parseCols(string row, Pose4X4& pose, int flag)
   
 }
 
-//Parse text from text files, input stream
+/**Method to parse text from text file input for both marker and camera poses
+ *@param stream, reference to text file as stringstream
+ *@param flag, distinguish between ef and ar input text input as formatting different
+ */
 int parseText(stringstream& stream, int flag)
 {
   //variables to hold parsed data temporarily
   int currentFrame, pattID;
   string r1,r2,r3,r4, line;
-  int index = 0;
   arInfo dataAR;
   efInfo dataEF; 
   Pose4X4 temp;
+
+  //Last row of homogeneous matrix, 0,0,0,1
   temp(3,0) = 0.0;
   temp(3,1) = 0.0;
   temp(3,2) = 0.0;
   temp(3,3) = 1.0;
-
+  string tempName ="";  
   while(!stream.eof())
     {
       getline(stream, line); 
-
+      
       if(line.find("NumPatterns")!=string::npos){
-	istringstream(line.substr(12))>>numPatts;	
+	istringstream(line.substr(12))>>numPatts;
       }
       
-      //Parsed one frame and 
+      if(line.find("PN")!=string::npos){
+        tempName = istringstream(line.substr(3)).str();
+	patternNames.push_back(tempName);	
+      }
+      //Line empty parsed data from one frame already
       if(line.empty()){
 	//Pass parsed values into either ar or ef struct depending on flag, add to vector
 	if(flag>0){
@@ -131,6 +149,8 @@ int parseText(stringstream& stream, int flag)
 	}
 	else {
 	  dataEF.frame = currentFrame;
+	  //need to scale pose as current x,y,z is in meters rather than mms as ar poses are.
+	  temp.block<3,1>(0,3) = temp.block<3,1>(0,3)*1000;
 	  dataEF.pose = temp;
 	  efPoses.push_back(dataEF);
 	}
@@ -141,7 +161,7 @@ int parseText(stringstream& stream, int flag)
       else if (line.find("Patt")!=string::npos ){
 	istringstream(line.substr(4))>>pattID;
       }
-       else if(line.find("r0")!=string::npos){
+      else if(line.find("r0")!=string::npos){
 	r1 = line.substr(2);
 	parseCols(r1, temp, 1);
       }
@@ -157,83 +177,87 @@ int parseText(stringstream& stream, int flag)
   return true; 
 }
 
+/**Method to SLERP between quaternions to get total orientation of marker
+ *@return total,  returns total orientation of marker
+ */
 Eigen::Quaternion<double> slerpQuaternion(){
 
-  Eigen::Quaternion<double> temp; 
+  
+  Eigen::Quaternion<double> temp;
   Eigen::Quaternion<double> total = globalCoordsQuat[0];
   
   for (int i=1; i< globalCoordsQuat.size(); i++){
    
     temp = globalCoordsQuat[i];
-    //unsure what 1 should be, defines the scalar (time?) difference between quaternions
-    total = total.slerp(1,temp);
+    //0.5 to interpolate halfway between quaternions
+    total = total.slerp(0.5,temp);
     
   }
   return total; 
-
 }
-
+/**Method to get average marker pose
+ *@param currentPatt, current marker average being computed
+ */
 void getMatrix(int currentPatt){
 
-   cout<<currentPatt<<endl;
-   int avg = 0;
-   XYZ avgTemp;
-   avgTemp<<0,0,0,0;
-   Pose4X4 temp;
-   temp<<
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0 ,0, 0;
-    Pose4X4 finalGlobalCoord;
-   finalGlobalCoord<<
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0 ,0, 0;
+  cout<<"current pattern matrix being calcuated "<<currentPatt<<endl;
 
-   Eigen::Matrix4d TagPoints;
-   TagPoints <<
-     0,10,10,0,
-     0,0,10,10,
-     0,0,0,0,
-     1,1,1,1;
+  int avg = 0;
+  //Translation vector for average
+  XYZ avgTemp;
+  avgTemp<<0,0,0,0;
 
-   Eigen::Matrix4d EFPoints;
-   EFPoints<<
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0, 0, 0,
-     0, 0 ,0, 0;
+  //Temporary and final  homogeneous pose
+  Pose4X4 temp;
+  temp<<
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0 ,0, 0;
+  Pose4X4 finalGlobalCoord;
+  finalGlobalCoord<<
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0 ,0, 0;
 
-     
-   //possibly 1,0,0,0, unsure what to instansiate quaternions as ***new note, identity = 1,0,0,0
-   Eigen::Quaternion<double> total(1,0,0,0);
-   Eigen::Quaternion<double> local(1,0,0,0);
-   
-  for (int i = 0; i<arPoses.size();i++){
+  //Matrix to transfrom single pose point to 4 vertices of tag
+  Eigen::Matrix4d TagPoints;
+  TagPoints <<
+    0,100,100,0,
+    0,0,100,100,
+    0,0,0,0,
+    1,1,1,1;
+
+  //Matrix to hold vetices
+  Eigen::Matrix4d EFPoints;
+  EFPoints<<
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0 ,0, 0;
+
+  Eigen::Quaternion<double> total(1,0,0,0);
+  Eigen::Quaternion<double> local(1,0,0,0);
+
+  //Iterate through marker poses
+  for (int i = 0; i<arPoses.size(); i++){
+
+    //If marker pose id equals current pattern argument
     if (arPoses[i].pattID == currentPatt){
-      
+
+      //Iterate through camera poses
       for(int j = 0; j<efPoses.size(); j++){
-	if(arPoses[i].frame == efPoses[j].frame){
 
-	  //Finding pose of arPose relative to efPose i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
-	  temp = arPoses[i].pose*efPoses[j].pose;
-
-	  //for visualization, get 4 points of edge of markers
-	  //Eigen::Vector4d P00(0,0,0,1),P10(1,0,0,1);
-
-	  //Eigen::Vector3d EF00 = temp * P00;
-	  //Eigen::Vector3d EF10 = temp * P10;
-
-	  //4 corners of the tag, get avg
-	  //EFPoints = temp * TagPoints;
-	  EFPoints = EFPoints+(temp*TagPoints);
+	//If marker pose frame equals camera pose frame, then poses were captured at the same frame and are related
+       	if(arPoses[i].frame == efPoses[j].frame){
+	  
+	  //Finding pose of marker relative to camera  i.e. the pose of the marker in the global (ef) coordinate system, multiply arPose by efPose
+	  temp =efPoses[j].pose* arPoses[i].pose;
 	  
 	  //split temp into quaternion+xyz
-	  
 	  //local rotation i.e rotation of the marker in that frame
-	  //push local into vector, slerp vector together
+	  //push local into vector
 	  local = temp.block<3,3>(0,0);
 	  globalCoordsQuat.push_back(local);
 	  
@@ -245,51 +269,95 @@ void getMatrix(int currentPatt){
       }
     }
   }
-
-  //iterate through quaternion vector, slerp, then recompose into 
+  
+  //iterate through quaternion vector, slerp, then recompose into total
   total = slerpQuaternion();
+
+  cout<<"avg frames current pattern spotted in  "<<avg<<endl;
+
+  //Average x,y,z
   avgTemp = avgTemp/avg;
-  cout<<EFPoints<<endl;
-  EFPoints = EFPoints/avg;
-  cout<<EFPoints<<endl;
+
+  
   finalGlobalCoord.block<3,3>(0,0) = total.toRotationMatrix();
   finalGlobalCoord.col(3) = avgTemp;
-
-  //cout<<finalGlobalCoord<<endl; 
-  //cout<<EFPoints<<endl;
+  
+  EFPoints = finalGlobalCoord*TagPoints;
   
   tagPoints.push_back(EFPoints);
-  //cout<<"average"<<avgTemp<<endl;
-  //Average x,y,z coordinates
-  globalMarkerCoords.push_back(finalGlobalCoord);
-}
-
-void getMultiMarkerConfig(Pose4X4 originP){
   
+  globalMarkerCoords.push_back(finalGlobalCoord);
+
+  //Clear quaternion vector for reuse. 
+  globalCoordsQuat.clear(); 
 }
 
+/**
+ *Method to ouput multimarker configuration file
+ */
+void getMultiMarkerConfig(){
+  
+  ofstream fp;
+
+  //Identity matrix i.e first marker
+  Pose4X4 temp;
+  temp<<
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0 ,0, 1;
+
+  //File name
+  fp.open("/home/oisin/libs/TestLogs/MultimarkerConfigs/Log04.dat");
+
+  //Number of patterns
+  fp<<numPatts<<endl<<endl;
+
+  //First pattern file path
+  fp<<patternNames[0]<<endl;
+  //Marker size
+  fp<<200.00<<endl;
+  fp<<temp.block<3,4>(0,0)<<endl<<endl;
+
+  //Iterate through marker poses and multiply by inverse to get pose of markers relative to the identity matrix
+  for(int i = 1; i<globalMarkerCoords.size(); i++){
+
+    temp =  globalMarkerCoords[0].inverse()*globalMarkerCoords[i];
+    fp<<patternNames[i]<<endl;
+    fp<<200.00<<endl;
+    fp<<temp.block<3,4>(0,0)<<endl<<endl;
+  }
+
+  fp.close();
+}
+
+/**
+ *Method to ouput .ply file for visualization
+ */
 void outputPLY(){
 
   //output stream 
   ofstream fp;
 
-  fp.open("/home/oisin/libs/markerPosition/visualize.ply");
+  //File name
+  fp.open("/home/oisin/libs/TestLogs/Testlogs/Demos/Log04.ply");
+
+  //Preamble
   fp<<"ply\nformat ascii 1.0\ncomment visualization of marker positions by Oisin Feely\nelement vertex "<<tagPoints.size()*4<<"\nproperty float32 x\nproperty float32 y\nproperty float32 z\nelement face "<<tagPoints.size()<<"\nproperty list uint8 int32 vertex_index\nend_header\n";
 
   for(int i=0;i<tagPoints.size(); i++){
 
+    //divide by 1000 as current pose in mms and ef .ply is in meters, 
     Eigen::Matrix<double, 3,4> tagPts = (tagPoints[i].block<3,4>(0,0))/1000;
-    cout<<tagPts<<endl;
 
+    //Iterate through vertices
     for(int j=0; j<4;j++){
-      //need to divide by 100 as currently in mms
       Eigen::RowVector3d flatten = tagPts.col(j);
-      
-      cout<<flatten<<endl;
       fp<<flatten<<endl;
     }
   }
   int count=0;
+  //Specifying vertices for faces
   for(int g=0; g<tagPoints.size(); g++){
     fp<<4<<" ";
     
@@ -304,15 +372,15 @@ void outputPLY(){
  
 }
 
+/**
+ *Main method
+ */
 int main ()
 {
   //Declare ifstreams to read in txt data, to be passed to parseText
   ifstream posesAR;
   ifstream posesEF;
 
-  //Flags to identify text
-  int arFlag = 1;
-  int efFlag = -1;
   
   arPoses.begin();
   efPoses.begin();
@@ -329,7 +397,6 @@ int main ()
     return false;
   }
 
-  //Possible issues with memory allocation, for very large files
   string arString((istreambuf_iterator<char>(posesAR)),
 			    istreambuf_iterator<char>());
   stringstream arPoseStream(arString);
@@ -340,31 +407,16 @@ int main ()
   stringstream efPoseStream(efString);
   posesEF.close();
 
-  parseText(arPoseStream,1);
+  parseText(arPoseStream,2);
   parseText(efPoseStream,-1);
-
+  
   for (int i=0; i<numPatts; i++){
     getMatrix(i);
   }
 
-  //getMultiMarkerConfig(globalMarkerCoords[0]);
-  /*
-  for(int i=0;i<globalMarkerCoords.size(); i++){
-    visualizeMarkers(globalMarkerCoords[i]);
-  }
-  */
   outputPLY();
-  
-  double xs = globalMarkerCoords[0](0,3)-globalMarkerCoords[1](0,3);
-  double ys= globalMarkerCoords[0](1,3)-globalMarkerCoords[1](1,3);
-  double zs= globalMarkerCoords[0](2,3)-globalMarkerCoords[1](2,3);
+  getMultiMarkerConfig();
 
-  cout<<"distance mm:"<<sqrt((pow(xs,2))+(pow(ys,2))+(pow(zs, 2)))<<"\n";
-  
-  //test result differences 
-  //cout<<"distance mm:"<<sqrt((pow(-676.437,2))+(pow(140.152,2))+(pow(-198.351, 2)))<<"\n";
-
-  
 }
 
 

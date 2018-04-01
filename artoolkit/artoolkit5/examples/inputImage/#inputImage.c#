@@ -1,0 +1,294 @@
+ /**Program to detect markers in RBG-D logs (.klg) and output marker pose relative to camera. 
+ *@Author Oisin Feely 
+ *@Version 1.1
+ *@Date 2017/18
+ */
+
+  
+//Dependencies
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>					
+#include <math.h>
+#include <AR/config.h>
+#include <AR/video.h>
+#include <AR/param.h>		  
+#include <AR/ar.h>
+#include <AR/gsub_lite.h>
+#include <ARUtil/time.h>
+#include <iostream>
+#include <fstream>
+
+/**Log reader dependency*/
+#include <../include/reader/RawLogReader.h>
+
+#include <opencv/cv.h>
+using namespace std; 
+
+/**Initialization of ARHandle and ARPattHandle structs to hold marker and camera information*/
+static ARHandle		*gARHandle = new ARHandle();
+static ARPattHandle	*gARPattHandle = NULL;
+
+/**Camera parameters struct*/
+ARParam*		 cparam = new ARParam();
+
+/**3D handle need to get transformation from camera to marker*/
+static AR3DHandle	*gAR3DHandle = NULL;
+
+/**Matrix to hold transformation from camera to marker i.e marker pose relative to camera*/
+static ARdouble		gPatt_trans[3][4];	        
+
+static ARdouble		gPatt_width     = 200.0;
+/**Declaration of camera parameter look up table*/
+static ARParamLT *gCparamLT = NULL;
+
+/**Declaration of program context settings, not used but can be set to different folders for accessing markers, 
+   camera parameter files, etc.*/
+static ARGL_CONTEXT_SETTINGS_REF gArglSettings = NULL;
+
+/**Declaration of text file for output*/
+FILE * fp; 
+
+/**Method to set up ARToolKit params, return false if unable to do so*/
+static int setupParams()
+{
+  //Pixel size
+  int		  xsize=640, ysize=480;
+  //Pixel format
+  AR_PIXEL_FORMAT pixFormat = AR_PIXEL_FORMAT_RGB;
+  //File path for camera parameters
+  const char* camPar = "/home/oisin/libs/artoolkit/artoolkit5/bin/Data/5X7calib1.dat";
+
+  //Clear AR param so can intializae with values from camera calib .dat file
+  if ((arParamClear(cparam, xsize, ysize, AR_DIST_FUNCTION_VERSION_DEFAULT))<0){
+    ARLOGi("Unable to clear ARparam");
+    return(false);
+  }
+
+  //Load camera params into ar param struct
+  if(arParamLoad(camPar, 1, cparam)<0){
+     ARLOGw("param load not happenening");
+     arParamClearWithFOVy(cparam, xsize, ysize, M_PI_4);
+     ARLOGw("using default camera parameters");
+    return(false);
+  }
+  
+  if (cparam->xsize != xsize || cparam->ysize != ysize) {
+    ARLOGw("*** Camera Parameter resized from %d, %d. ***\n", cparam->xsize, cparam->ysize);
+    arParamChangeSize(cparam, xsize, ysize, cparam);
+  }
+
+  //Intialize parameter lookup table from camera parameters in ar param struct, 
+  if ((gCparamLT = arParamLTCreate(cparam, AR_PARAM_LT_DEFAULT_OFFSET)) == NULL) {
+    ARLOGe("setupCamera(): Error: arParamLTCreate.\n");
+    return (FALSE);
+  }
+
+  //Initialization of arHandle struct with params from look up table
+  if( (gARHandle=arCreateHandle(gCparamLT)) == NULL ) {
+    ARLOGe("Error: arCreateHandle.\n");
+    exit(0);
+  }
+
+  //Set pixel format
+  if( arSetPixelFormat(gARHandle, pixFormat) < 0 ) {
+    ARLOGe("Error: arSetPixelFormat.\n");
+    exit(0);
+  }
+
+  //Intialization of 3DarHandle
+  if( (gAR3DHandle=ar3DCreateHandle(cparam)) == NULL ) {
+    ARLOGe("Error: ar3DCreateHandle.\n");
+    exit(0);
+  }
+
+  //Display parameters
+  arParamDisp(cparam);
+  return (TRUE);
+}
+
+/**Method to setup markers, attach to ar handles, create unique patt ids
+ *@param **patterns pointer to array holding marker pattern file paths
+ *@param *pattIDs array to hold unique marker pattern ids generated
+ *@param *arHandle ARHandle to attach marker pattern information
+ *@param *pattHandle_p Struct which holds descriptions of trained patterns for template matching
+ *@param numMarkers number of markers in total
+ */
+static int setupMarker(const char **patterns, int *pattIDs , ARHandle *arhandle, ARPattHandle **pattHandle_p, const int numMarkers )
+{
+  //Intialize ARPattHandle
+  if ((*pattHandle_p = arPattCreateHandle()) == NULL) {
+    ARLOGe("setupMarker(): Error: arPattCreateHandle.\n");
+    return (FALSE);
+  }
+  //For number of markers iterate through patterns array containing file paths
+  for (int i = 0;  i < numMarkers ; i++)
+    {
+      cout<<"Pattern file path: "<<patterns[i]<<"\n";
+
+      //arPattLoad attaches pattern file information to pattHandle_p and returns an index of the loaded pattern which can be used as
+      //a pattern ID
+      if ((pattIDs[i]= arPattLoad(*pattHandle_p, patterns[i])) < 0) {
+	ARLOGe("setupMarker(): Error loading pattern file %s.\n");
+	return (FALSE);
+      }
+      cout<<"Pattern id: "<<pattIDs[i]<<endl;
+      //Attach pattern handle to arHandle
+      arPattAttach(arhandle, *pattHandle_p);
+      ARLOGi("setupMarker \n");
+    }
+  return (TRUE);
+}
+/**Method to clean up after main method has ran*/
+static void cleanup(void)
+{   
+  ARLOGi("cleanup");
+  arglCleanup(gArglSettings);
+  gArglSettings = NULL;
+  arPattDetach(gARHandle);
+  arPattDeleteHandle(gARPattHandle);
+  ar3DDeleteHandle(&gAR3DHandle);
+  arDeleteHandle(gARHandle);
+  arParamLTFree(&gCparamLT);
+}
+
+/**Method to detect marker in AR2VideoBufferT image data
+ *@param *image Pointer to video buffer struct holding image data 
+ *@param currentFrame Current frame from log reader
+ *@param *pattIDs pointer to array of pattern ids
+ *@param numMarkers Total number of markers
+ */
+int detectMarker(AR2VideoBufferT *image, int currentFrame, int *pattIDs, int numMarkers)
+{
+  //Transformation matrix to hold pose of marker relative to camera
+  ARdouble err;
+  //Array of marker info structs describing detected marker area in image
+  ARMarkerInfo   *markerInfo;
+  
+  //Intialize counts
+  int j, k, i,markerCount;
+  
+  //Detect marker in image, returns less then zero if some error
+  if (arDetectMarker(gARHandle, image) < 0) {
+    ARLOGe("Error in marker detection");
+    exit(-1);
+  }
+  
+  //arGetMarker returns array of marker info structs 
+  markerInfo = arGetMarker(gARHandle);
+  //arGetMarkerNum returns amount of detected markers
+  markerCount = arGetMarkerNum(gARHandle);
+  
+  //Loop iterates through number of markers and markers detected and sees if marker pattern ids match and if
+  //confidence of spotting that marker is above a certain threshold
+  for (i = 0; i<numMarkers; i++)
+    {
+      for (j = 0; j < markerCount; j++) {
+	//if marker info id at j equals a pattern id and if the confidence of that marker is above a certain threshold marker detected
+	if (markerInfo[j].id == pattIDs[i]) {
+	  if (markerInfo[j].cf >=0.7){
+	    cout<<"pattern id "<<markerInfo[j].id<<" detected in frame "<<currentFrame<<"\n";
+
+	    //arGetTransMatSquare gets the position of the marker relative to the camera and intialize gPatt_trans to it
+	    err = arGetTransMatSquare(gAR3DHandle, &(markerInfo[j]), gPatt_width, gPatt_trans);
+
+	    //Output current frame, patt id and pose of marker
+	    fprintf(fp, "%s %i \n", "Frame",currentFrame );
+	    fprintf(fp, "%s %i \n", "Patt" , markerInfo[j].id );
+	    int l ,m;  
+	    for (l=0; l<3; l++){
+	      fprintf(fp, "%s%i ", "r",l ); 
+	      for (m=0; m<4; m++){
+		fprintf(fp, "%f ", gPatt_trans[l][m]);
+	      }
+	      fprintf(fp, "\n");
+	    }
+	    fprintf(fp, "\n");
+	  }   
+	}
+      }
+    }
+}
+/**Main method*/
+int main(void)
+{
+  //Char array of pattern file paths
+  const char* patterns [] = {"Data/hiro.patt","Data/kanji.patt","Data/sample1.patt","Data/sample2.patt"};
+
+  //Number of markers
+  const int numMarkers= (sizeof(patterns)/sizeof(patterns[0]));
+  //Array for patt id's
+  int pattIDs[numMarkers];
+
+  //Declare new video buffer to hold frame information
+  AR2VideoBufferT *image = new AR2VideoBufferT();
+
+  //Actual rbg image data
+  ARUint8* im;
+
+  //Current frame
+  int currentFrame;
+  
+  //Can put Data folder in bin or share, arUtilChange changes it to share. as everything in bin no need
+  //arUtilChangeToResourcesDirectory(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_BEST, NULL);
+
+  //Set up params
+  setupParams();
+
+  //Set up markers
+  if (!setupMarker(patterns, pattIDs, gARHandle, &gARPattHandle, numMarkers)) {
+    ARLOGe("main(): Unable to set up AR marker.\n");
+    cleanup();
+    exit(-1);
+  }
+
+  //Logfile to read*****program must be recompiled if changing log or text output
+  string logfile = "/home/oisin/libs/TestLogs/Testlogs/Demos/2018-03-22.04.klg";
+  //Declare logreader to read logs
+  RawLogReader * logreader;
+
+  //Assert resolution of logreader
+  Resolution::get(640, 480);
+
+  //Intialization of logreader
+  logreader = new RawLogReader(logfile);
+
+  //Intialization of image struct buffer
+  image->buff = new ARUint8[640*480];
+
+  //text file to write to
+  fp=fopen("/home/oisin/libs/TestLogs/ARLogReaderFrames&Poses/Demos/Log04.txt", "w");
+
+  //Output number of patterns to text file for parsing in markerPosition
+  fprintf(fp, "%s %i \n", "NumPatterns",numMarkers );
+  //Output file paths for markers to text file for parsing in markerPosition 
+  for(int i = 0; i <numMarkers; i++){
+    fprintf(fp, "%s %s\n", "PN", patterns[i]);
+  }
+
+  //While log reader has frames to process
+  while (logreader->grabNext())
+    {
+      //im (ARUint8 is buffer of pixed data) equal decompressed rbg image from logreader
+      im = logreader->decompressedImage;
+
+      //Convert im to greyscale
+      cv::Mat cvimage(480, 640, CV_8UC3, im);
+      cv::Mat gimage;
+      cv::cvtColor(cvimage, gimage, CV_BGR2GRAY);
+    
+      image->buff = im ;
+      image->bufPlanes = NULL;
+      image->bufPlaneCount= 0; 
+      image->buffLuma = gimage.data;
+      image->fillFlag = 1; 
+      currentFrame = logreader->currentFrame;
+      detectMarker(image, currentFrame, pattIDs, numMarkers);
+    }
+  fclose(fp);
+  ARLOGi("main end");
+  return (0);
+}
+
+
+

@@ -19,13 +19,15 @@
 #include "MainController.h"
 #include <iostream>
 #include <fstream>
-//#include "opencv2/opencv.hpp"
+//OpenCv dependency for outputting jpeg frames for camera calibration
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 using namespace cv;
 using namespace std;
-VideoWriter video;
+
+//Text file for camera poses
 ofstream myfile;
+
 MainController::MainController(int argc, char * argv[])
   : good(true),
     eFusion(0),
@@ -188,20 +190,17 @@ MainController::MainController(int argc, char * argv[])
      {
 	 if(eFusion)
 	 {
-	   // video.open("calib.avi",CV_FOURCC('X','V','I','D'),20, Size(640, 480));
-
-	   //Write current pose to text file 
+	   //Open file path for outputting camera poses 
 	   std::ostringstream oss;
 	   oss << "/home/oisin/libs/TestLogs/EFFrames&Poses/Test1.txt";
 	   std::string path = oss.str();
 	   myfile.open (path);
 
+	   //Run main loop 
 	   run();
 	   
 	   myfile.close();
 		 
-	   // video.release();
-
 	 }
 
 	 if(eFusion == 0 || resetButton)
@@ -365,10 +364,11 @@ MainController::MainController(int argc, char * argv[])
 	     gui->resLog.Log((std::isnan(eFusion->getModelToModel().lastICPError) ? std::numeric_limits<float>::max() : eFusion->getModelToModel().lastICPError), icpErrThresh);
 	     gui->inLog.Log(eFusion->getModelToModel().lastICPCount, icpCountThresh);
 	 }
+
+	 //Current camera pose
 	  Eigen::Matrix4f pose = eFusion->getCurrPose();
 	 
-	 ///get current pose print out and get frame 
-	  
+	  //Output current frame and pose to text file
 	  myfile << "Frame "<<logReader->currentFrame<<"\n";
 	  for (int i=0; i<4;i++){
 	    myfile<<"r"<<i<<" ";
@@ -378,19 +378,18 @@ MainController::MainController(int argc, char * argv[])
 	    myfile<<"\n";
 	  }
 	  myfile<<"\n";
-	  //myfile << eFusion->getCurrPose() << "\n\n";
 
-	 /*
+	  /*****One time use for outputting frames for camera calibration (Asus Xtion Pro Live 2)***************
+	 //Convert logreader RGB data to dense matrix
 	 cv::Mat frame = cv::Mat(Size(640, 480), CV_8UC3,(logReader->rgb)); 
 
+	 //File Pat
 	 std::ostringstream filepath; 
          filepath << "/home/oisin/libs/TestLogs/CalibrationFrames/"<<logReader->currentFrame<<".jpg";
          std::string fp = filepath.str();
          imwrite(fp, frame ); 
 	
 	 //imshow( "Frame", frame );
-
-	 //video.write(frame);
 	 */
 
 
